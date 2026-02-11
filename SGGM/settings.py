@@ -28,6 +28,7 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 # APPLICATIONS
 # ==============================================================================
 INSTALLED_APPS = [
+    "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
 
     # Third-party
     # "storages",
+    'rest_framework',
 
     # Local apps
     "core",
@@ -111,7 +113,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
-USE_TZ = True
+USE_TZ = False
 
 # ==============================================================================
 # STATIC / MEDIA / AWS S3
@@ -165,3 +167,28 @@ if not DEBUG:
 # DEFAULT PRIMARY KEY
 # ==============================================================================
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+JAZZMIN_SETTINGS = {
+    "site_title": "SGGM Admin",
+    "site_header": "SGGM",
+    "site_brand": "Sistema de Gestão de Grupo Musical",
+    "welcome_sign": "Bem-vindo ao SGGM",
+    "copyright": "Erickson Dutra",
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "order_with_respect_to": ["core"],
+    "show_ui_builder": False,
+    "topmenu_links": [],
+    "user_avatar": None,
+    "custom_links": {
+        "auth": [{
+            "name": "Logout",
+            "url": "/admin/logout/",
+            "icon": "fas fa-sign-out-alt",
+        }]
+    }
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+}
