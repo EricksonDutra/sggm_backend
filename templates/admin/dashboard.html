@@ -1,0 +1,235 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <h1 class="mb-4">📊 Dashboard SGGM</h1>
+
+    <div class="row">
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-info">
+                <div class="inner">
+                    <h3>{{ total_musicos }}</h3>
+                    <p>Músicos</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-success">
+                <div class="inner">
+                    <h3>{{ total_musicas }}</h3>
+                    <p>Músicas</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-warning">
+                <div class="inner">
+                    <h3>{{ eventos_futuros }}</h3>
+                    <p>Eventos Futuros</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-danger">
+                <div class="inner">
+                    <h3>{{ escalas_mes }}</h3>
+                    <p>Escalas no mês</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    {% if proximo_evento %}
+    <div class="card mt-4">
+        <div class="card-header">
+            🎯 Próximo Evento
+        </div>
+        <div class="card-body">
+            <h4>{{ proximo_evento.nome }}</h4>
+            <p>
+                📅 {{ proximo_evento.data_evento }} <br>
+                📍 {{ proximo_evento.local }}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card mt-4">
+    <div class="card-header">
+        🎵 Ranking de Músicas Mais Usadas
+    </div>
+    <div class="card-body">
+
+        {% if ranking_musicas %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Música</th>
+                        <th>Artista</th>
+                        <th>Qtd. Eventos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for musica in ranking_musicas %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ musica.titulo }}</td>
+                        <td>{{ musica.artista }}</td>
+                        <td>
+                            <span class="badge bg-success">
+                                {{ musica.total_eventos }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Nenhuma música utilizada ainda.</p>
+        {% endif %}
+
+    </div>
+</div>
+
+<div class="card mt-4 border-danger">
+    <div class="card-header bg-danger text-white">
+        🚨 Alerta de Sobrecarga
+    </div>
+    <div class="card-body">
+
+        {% if sobrecarga %}
+            <ul class="list-group">
+                {% for item in sobrecarga %}
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>
+                        👤 {{ item.musico.nome }}
+                    </span>
+                    <span class="badge bg-danger">
+                        {{ item.sequencia }} eventos seguidos
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-success">Nenhum músico sobrecarregado 🎉</p>
+        {% endif %}
+
+    </div>
+</div>
+
+
+<div class="card mt-4">
+    <div class="card-header">
+        👥 Músicos Mais Escalados
+    </div>
+    <div class="card-body">
+
+        {% if ranking_musicos %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Músico</th>
+                        <th>Telefone</th>
+                        <th>Qtd. Escalas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for musico in ranking_musicos %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ musico.nome }}</td>
+                        <td>{{ musico.telefone }}</td>
+                        <td>
+                            <span class="badge bg-info">
+                                {{ musico.total_escalas }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Nenhuma escala registrada.</p>
+        {% endif %}
+
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        ⚖️ Músicos Menos Escalados
+    </div>
+    <div class="card-body">
+
+        {% if ranking_menos_escalados %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Músico</th>
+                        <th>Telefone</th>
+                        <th>Qtd. Escalas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for musico in ranking_menos_escalados %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ musico.nome }}</td>
+                        <td>{{ musico.telefone }}</td>
+                        <td>
+                            <span class="badge bg-warning">
+                                {{ musico.total_escalas }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Nenhuma informação disponível.</p>
+        {% endif %}
+
+    </div>
+</div>
+
+
+
+<div class="card mt-4">
+    <div class="card-header">
+        🤖 Sugestão Inteligente de Repertório
+    </div>
+    <div class="card-body">
+
+        {% if sugestao_repertorio %}
+            <ul class="list-group">
+                {% for musica in sugestao_repertorio %}
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>
+                        🎵 {{ musica.titulo }} - {{ musica.artista }}
+                    </span>
+                    <span class="badge bg-primary">
+                        {{ musica.total_eventos }} usos históricos
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Sem sugestões disponíveis.</p>
+        {% endif %}
+
+    </div>
+</div>
+
+
+</div>
+{% endblock %}

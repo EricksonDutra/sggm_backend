@@ -66,7 +66,7 @@ class Escala(models.Model):
         db_table = 'escalas'
         unique_together = ('musico', 'evento')
         verbose_name = 'Escala'
-        verbose_name = 'Escalas'
+        verbose_name_plural = 'Escalas'
 
     def __str__(self):
         return f"{self.musico.nome} em {self.evento.nome}"

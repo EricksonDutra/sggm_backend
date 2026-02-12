@@ -1,4 +1,5 @@
-from django.contrib import admin
+# from django.contrib import admin
+from core.admin import admin_site
 from django.urls import include, path
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -25,7 +26,7 @@ router.register(r'musicas', MusicaViewSet)
 router.register(r'instrumentos', InstrumentoViewSet)
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin_site.urls),
     path('api/', include(router.urls)),
 
     path('api/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
