@@ -32,7 +32,7 @@ class MusicaAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ("Informações da Música", {
-            "fields": ("titulo", "artista"),
+            "fields": ("titulo", "artista", "tom", "link_cifra", "link_youtube"),
         }),
     )
 

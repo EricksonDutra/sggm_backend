@@ -172,7 +172,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 JAZZMIN_SETTINGS = {
     "site_title": "SGGM Admin",
     "site_header": "SGGM",
-    "site_brand": "Sistema de Gestão de Grupo Musical",
+    "site_brand": "SGGM",
     "welcome_sign": "Bem-vindo ao SGGM",
     "copyright": "Erickson Dutra",
     "show_sidebar": True,
