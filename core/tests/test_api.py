@@ -3,17 +3,19 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from core.models import Escala, Evento, Musico
+from core.models import Escala, Evento, Musico, Instrumento
 
 
 class EscalaAPITest(APITestCase):
     def setUp(self):
+        instrumento = Instrumento.objects.create(nome="Contra baixo")
+
         # 1. Prepara o terreno (Massa de dados)
         self.musico = Musico.objects.create(
             nome="Erickson",
             email="erickson@teste.com",
             telefone="99999999",
-            instrumento_principal="Baixo"
+            instrumento_principal=instrumento
         )
         self.evento = Evento.objects.create(
             nome="Culto Santa Ceia",

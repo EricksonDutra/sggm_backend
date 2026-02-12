@@ -1,5 +1,6 @@
 from django.db import models
-
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from django.utils.timezone import now
 
@@ -13,7 +14,7 @@ class Musico(models.Model):
     ]
 
     nome = models.CharField(max_length=100)
-    telefone = models.CharField(max_length=20)
+    telefone = models.CharField(max_length=20, blank=True, null=True)
     email = models.EmailField(unique=True)
     endereco = models.CharField(max_length=255, blank=True, null=True)
 
@@ -36,6 +37,25 @@ class Musico(models.Model):
     motivo_inatividade = models.CharField(max_length=255, blank=True)
 
     data_cadastro = models.DateTimeField(auto_now_add=True)
+
+    def esta_afastado(self):
+        hoje = timezone.now().date()
+
+        if self.status != "AFASTADO":
+            return False
+
+        if self.data_inicio_inatividade and self.data_fim_inatividade:
+            return self.data_inicio_inatividade <= hoje <= self.data_fim_inatividade
+
+        return False
+
+    def clean(self):
+        if Musico.objects.exclude(pk=self.pk).filter(email=self.email).exists():
+            raise ValidationError({"email": "Já existe um músico com este email."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'musicos'
@@ -139,6 +159,28 @@ class Escala(models.Model):
     confirmado = models.BooleanField(default=False)
 
     criado_em = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        musico = self.musico
+
+        # músico inativo
+        if musico.status == "INATIVO":
+            raise ValidationError("Músico inativo não pode ser escalado.")
+
+        # músico afastado no período
+        if musico.status == "AFASTADO":
+            hoje = timezone.now().date()
+
+            if (
+                musico.data_inicio_inatividade
+                and musico.data_fim_inatividade
+                and musico.data_inicio_inatividade <= hoje <= musico.data_fim_inatividade
+            ):
+                raise ValidationError("Músico afastado nesse período.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'escalas'
