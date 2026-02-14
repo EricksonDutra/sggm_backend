@@ -1,13 +1,14 @@
+from datetime import timedelta
+
 from django.contrib import admin
+from django.contrib.auth.admin import GroupAdmin, UserAdmin
+from django.contrib.auth.models import Group, User
+from django.db.models import Count, Q
+from django.template.response import TemplateResponse
+from django.urls import path
 from django.utils.timezone import now
 
 from .models import Escala, Evento, Instrumento, Musica, Musico
-
-from django.urls import path
-from django.template.response import TemplateResponse
-from django.db.models import Count, Q
-from datetime import timedelta
-
 
 # =====================================================
 # MUSICO
@@ -31,9 +32,12 @@ class MusicaAdmin(admin.ModelAdmin):
     ordering = ("titulo",)
 
     fieldsets = (
-        ("Informações da Música", {
-            "fields": ("titulo", "artista", "tom", "link_cifra", "link_youtube"),
-        }),
+        (
+            "Informações da Música",
+            {
+                "fields": ("titulo", "artista", "tom", "link_cifra", "link_youtube"),
+            },
+        ),
     )
 
 
@@ -65,13 +69,19 @@ class EventoAdmin(admin.ModelAdmin):
     inlines = [EscalaInline]
 
     fieldsets = (
-        ("Informações Principais", {
-            "fields": ("nome", "data_evento", "local"),
-        }),
-        ("Detalhes", {
-            "fields": ("descricao", "repertorio"),
-            "classes": ("collapse",),
-        }),
+        (
+            "Informações Principais",
+            {
+                "fields": ("nome", "data_evento", "local"),
+            },
+        ),
+        (
+            "Detalhes",
+            {
+                "fields": ("descricao", "repertorio"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     # 🔐 Permissão: só Administradores podem excluir
@@ -93,9 +103,12 @@ class EventoAdmin(admin.ModelAdmin):
     def get_fieldsets(self, request, obj=None):
         if request.user.groups.filter(name="Músicos").exists():
             return (
-                ("Informações do Evento", {
-                    "fields": ("nome", "data_evento", "local"),
-                }),
+                (
+                    "Informações do Evento",
+                    {
+                        "fields": ("nome", "data_evento", "local"),
+                    },
+                ),
             )
         return super().get_fieldsets(request, obj)
 
@@ -114,12 +127,18 @@ class EscalaAdmin(admin.ModelAdmin):
     raw_id_fields = ("musico",)
 
     fieldsets = (
-        ("Relacionamentos", {
-            "fields": ("musico", "evento"),
-        }),
-        ("Detalhes da Escala", {
-            "fields": ("instrumento_no_evento",),
-        }),
+        (
+            "Relacionamentos",
+            {
+                "fields": ("musico", "evento"),
+            },
+        ),
+        (
+            "Detalhes da Escala",
+            {
+                "fields": ("instrumento_no_evento",),
+            },
+        ),
     )
 
 
@@ -166,30 +185,22 @@ class CustomAdminSite(admin.AdminSite):
 
         # sugestão baseada no histórico mas evitando recentes
         sugestao_repertorio = (
-            Musica.objects
-            .exclude(id__in=musicas_recentes)
+            Musica.objects.exclude(id__in=musicas_recentes)
             .annotate(total_eventos=Count("eventos"))
             .order_by("-total_eventos")[:5]
         )
 
-        ranking_musicos = (
-            Musico.objects
-            .annotate(total_escalas=Count("escalas"))
-            .order_by("-total_escalas")[:5]
-        )
+        ranking_musicos = Musico.objects.annotate(
+            total_escalas=Count("escalas")
+        ).order_by("-total_escalas")[:5]
 
         inicio_mes = now().replace(day=1)
 
-        ranking_menos_escalados = (
-            Musico.objects
-            .annotate(
-                total_escalas=Count(
-                    "escalas",
-                    filter=Q(escalas__evento__data_evento__gte=inicio_mes)
-                )
-            ) 
-            .order_by("total_escalas")[:5]
-        )
+        ranking_menos_escalados = Musico.objects.annotate(
+            total_escalas=Count(
+                "escalas", filter=Q(escalas__evento__data_evento__gte=inicio_mes)
+            )
+        ).order_by("total_escalas")[:5]
 
         # ==============================
         # 🚨 ALERTA DE SOBRECARGA
@@ -197,17 +208,13 @@ class CustomAdminSite(admin.AdminSite):
 
         limite_consecutivo = 3
 
-        eventos_ordenados = (
-            Evento.objects
-            .order_by("data_evento")
-        )
+        eventos_ordenados = Evento.objects.order_by("data_evento")
 
         sobrecarga = []
 
         for musico in Musico.objects.all():
             eventos_musico = (
-                Escala.objects
-                .filter(musico=musico)
+                Escala.objects.filter(musico=musico)
                 .select_related("evento")
                 .order_by("evento__data_evento")
             )
@@ -230,26 +237,23 @@ class CustomAdminSite(admin.AdminSite):
                 ultima_data = data_atual
 
             if maior_sequencia >= limite_consecutivo:
-                sobrecarga.append({
-                    "musico": musico,
-                    "sequencia": maior_sequencia
-                })
+                sobrecarga.append({"musico": musico, "sequencia": maior_sequencia})
 
         context = dict(
             self.each_context(request),
             total_musicos=Musico.objects.count(),
             total_musicas=Musica.objects.count(),
-            eventos_futuros=Evento.objects.filter(
-                data_evento__gte=hoje).count(),
+            eventos_futuros=Evento.objects.filter(data_evento__gte=hoje).count(),
             escalas_mes=Escala.objects.filter(
                 evento__data_evento__month=hoje.month
             ).count(),
-            proximo_evento=Evento.objects.filter(
-                data_evento__gte=hoje
-            ).order_by("data_evento").first(),
+            proximo_evento=Evento.objects.filter(data_evento__gte=hoje)
+            .order_by("data_evento")
+            .first(),
             ranking_musicas=(
-                Musica.objects.annotate(total_eventos=Count(
-                    "eventos")).order_by("-total_eventos")[:5]
+                Musica.objects.annotate(total_eventos=Count("eventos")).order_by(
+                    "-total_eventos"
+                )[:5]
             ),
             sugestao_repertorio=sugestao_repertorio,
             ranking_musicos=ranking_musicos,
@@ -264,6 +268,10 @@ class CustomAdminSite(admin.AdminSite):
 
 
 admin_site = CustomAdminSite(name="custom_admin")
+
+
+admin_site.register(User, UserAdmin)
+admin_site.register(Group, GroupAdmin)
 admin_site.register(Musico, MusicoAdmin)
 admin_site.register(Musica, MusicaAdmin)
 admin_site.register(Evento, EventoAdmin)
