@@ -1,8 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from firebase_admin import messaging
 
-from .models import Escala, Evento, Instrumento, Musico
+from core.models import Escala, Evento, Instrumento, Musico
 
 
 class GerenciadorEscala:
@@ -57,55 +56,3 @@ class GerenciadorEscala:
         )
 
         return escala
-
-
-class NotificationService:
-
-    @staticmethod
-    def enviar_notificacao_escala(musico, evento):
-        """Enviar notificação quando músico for escalado"""
-
-        # Obter token FCM do músico (adicionar campo no modelo)
-        if not musico.fcm_token:
-            return False
-
-        message = messaging.Message(
-            notification=messaging.Notification(
-                title="Nova Escala! 🎵",
-                body=f'Você foi escalado para {evento.nome} em {evento.data_evento.strftime("%d/%m/%Y")}',
-            ),
-            data={
-                "type": "escala",
-                "evento_id": str(evento.id),
-                "musico_id": str(musico.id),
-            },
-            token=musico.fcm_token,
-        )
-
-        try:
-            response = messaging.send(message)
-            print(f"✅ Notificação enviada: {response}")
-            return True
-        except Exception as e:
-            print(f"❌ Erro ao enviar notificação: {e}")
-            return False
-
-    @staticmethod
-    def enviar_notificacao_topico(topico, titulo, corpo, dados=None):
-        """Enviar notificação para um tópico (ex: todos os músicos)"""
-
-        message = messaging.Message(
-            notification=messaging.Notification(
-                title=titulo,
-                body=corpo,
-            ),
-            data=dados or {},
-            topic=topico,
-        )
-
-        try:
-            response = messaging.send(message)
-            return True
-        except Exception as e:
-            print(f"❌ Erro: {e}")
-            return False

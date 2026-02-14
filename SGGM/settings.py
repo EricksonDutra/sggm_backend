@@ -15,6 +15,24 @@ env = environ.Env(
 
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
+
+# ==============================================================================
+# FIREBASE
+# ==============================================================================
+FIREBASE_CREDENTIALS_JSON = env("FIREBASE_CREDENTIALS")
+if FIREBASE_CREDENTIALS_JSON:
+    import json
+
+    FIREBASE_CONFIG = json.loads(FIREBASE_CREDENTIALS_JSON)
+else:
+    # Fallback para arquivo local em desenvolvimento
+    cred_path = BASE_DIR / "firebase-adminsdk-credentials.json"
+    if cred_path.exists():
+        with open(cred_path, "r") as f:
+            FIREBASE_CONFIG = json.load(f)
+    else:
+        FIREBASE_CONFIG = None
+
 # ==============================================================================
 # DJANGO CORE
 # ==============================================================================
@@ -23,7 +41,7 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*"]
 
 # ==============================================================================
 # APPLICATIONS
@@ -36,11 +54,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # Third-party
     # "storages",
-    'rest_framework',
-
+    "rest_framework",
     # Local apps
     "core",
     # "escalas",
@@ -85,7 +101,7 @@ TEMPLATES = [
 ]
 
 # ==============================================================================
-# DATABASE (PostgreSQL)
+# DATABASE (mysql)
 # ==============================================================================
 DATABASES = {
     "default": {
@@ -98,11 +114,20 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
+# }
+
 # ==============================================================================
 # PASSWORD VALIDATORS
 # ==============================================================================
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -138,8 +163,14 @@ if USE_S3:
 else:
     STATIC_URL = "/static/"
     STATIC_ROOT = BASE_DIR / "staticfiles"
-    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
-
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
@@ -184,12 +215,14 @@ JAZZMIN_SETTINGS = {
     "topmenu_links": [],
     "user_avatar": None,
     "custom_links": {
-        "auth": [{
-            "name": "Logout",
-            "url": "/admin/logout/",
-            "icon": "fas fa-sign-out-alt",
-        }]
-    }
+        "auth": [
+            {
+                "name": "Logout",
+                "url": "/admin/logout/",
+                "icon": "fas fa-sign-out-alt",
+            }
+        ]
+    },
 }
 
 JAZZMIN_UI_TWEAKS = {
