@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.api.permissions import IsLiderOrReadOnly
@@ -20,11 +21,26 @@ class MusicoViewSet(viewsets.ModelViewSet):
     queryset = Musico.objects.all()
     serializer_class = MusicoSerializer
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def atualizar_fcm_token(self, request, pk=None):
         """Atualizar token FCM do músico"""
         musico = self.get_object()
         token = request.data.get("fcm_token")
+
+        # 🔥 VALIDAÇÃO: Verificar se o usuário pode atualizar este músico
+        # Opção A: Se houver relacionamento User -> Musico
+        if hasattr(request.user, "musico") and request.user.musico.id != musico.id:
+            return Response(
+                {"error": "Você só pode atualizar seu próprio token"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Opção B: Se não houver relacionamento direto, comparar por email
+        if request.user.email != musico.email:
+            return Response(
+                {"error": "Você só pode atualizar seu próprio token"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         if token:
             musico.fcm_token = token
