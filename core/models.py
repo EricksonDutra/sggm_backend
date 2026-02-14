@@ -7,6 +7,12 @@ from django.utils.timezone import now
 
 class Musico(models.Model):
 
+    TIPO_USUARIO_CHOICES = [
+        ("MUSICO", "Músico"),
+        ("LIDER", "Líder"),
+        ("ADMIN", "Administrador"),
+    ]
+
     STATUS_CHOICES = [
         ("ATIVO", "Ativo"),
         ("INATIVO", "Inativo"),
@@ -14,16 +20,17 @@ class Musico(models.Model):
     ]
 
     user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name="musico",
-        null=True,  # Permitir null temporariamente para migração
-        blank=True,
+        User, on_delete=models.CASCADE, related_name="musico", null=True, blank=True
+    )
+    tipo_usuario = models.CharField(
+        max_length=20,
+        choices=TIPO_USUARIO_CHOICES,
+        default="MUSICO",
+        verbose_name="Tipo de Usuário",
     )
 
     nome = models.CharField(max_length=100)
     telefone = models.CharField(max_length=20, blank=True, null=True)
-    email = models.EmailField(unique=True)
     endereco = models.CharField(max_length=255, blank=True, null=True)
 
     instrumento_principal = models.ForeignKey(
@@ -57,13 +64,46 @@ class Musico(models.Model):
 
         return False
 
+    def is_lider(self):
+        """Verifica se é líder ou admin"""
+        return self.tipo_usuario in ["LIDER", "ADMIN"] or self.user.is_superuser
+
+    def is_admin(self):
+        """Verifica se é admin"""
+        return self.tipo_usuario == "ADMIN" or self.user.is_superuser
+
     def clean(self):
-        if Musico.objects.exclude(pk=self.pk).filter(email=self.email).exists():
-            raise ValidationError({"email": "Já existe um músico com este email."})
+        if self.user:
+            # Verificar se já existe outro músico com o mesmo usuário
+            if Musico.objects.exclude(pk=self.pk).filter(user=self.user).exists():
+                raise ValidationError(
+                    {"user": "Já existe um músico vinculado a este usuário."}
+                )
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+        self._sincronizar_grupo()
+
+    def _sincronizar_grupo(self):
+        """Sincroniza o grupo Django com o tipo de usuário"""
+        from django.contrib.auth.models import Group
+
+        # Remover de todos os grupos relacionados
+        grupos_sistema = ["Músicos", "Lideres", "Administradores"]
+        self.user.groups.filter(name__in=grupos_sistema).delete()
+
+        # Adicionar ao grupo correto
+        if self.tipo_usuario == "MUSICO":
+            grupo, _ = Group.objects.get_or_create(name="Músicos")
+        elif self.tipo_usuario == "LIDER":
+            grupo, _ = Group.objects.get_or_create(name="Lideres")
+        elif self.tipo_usuario == "ADMIN":
+            grupo, _ = Group.objects.get_or_create(name="Administradores")
+            self.user.is_staff = True
+            self.user.save()
+
+        self.user.groups.add(grupo)
 
     class Meta:
         db_table = "musicos"
@@ -73,6 +113,11 @@ class Musico(models.Model):
 
     def __str__(self):
         return self.nome
+
+    @property
+    def email(self):
+        """Retorna o email do usuário vinculado"""
+        return self.user.email if self.user else None
 
     def esta_disponivel(self):
         """
