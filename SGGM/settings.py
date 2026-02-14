@@ -103,23 +103,23 @@ TEMPLATES = [
 # ==============================================================================
 # DATABASE (mysql)
 # ==============================================================================
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST"),
-        "PORT": env("DB_PORT"),
-    }
-}
-
 # DATABASES = {
 #     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
+#         "ENGINE": "django.db.backends.mysql",
+#         "NAME": env("DB_NAME"),
+#         "USER": env("DB_USER"),
+#         "PASSWORD": env("DB_PASSWORD"),
+#         "HOST": env("DB_HOST"),
+#         "PORT": env("DB_PORT"),
 #     }
 # }
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
+}
 
 # ==============================================================================
 # PASSWORD VALIDATORS
@@ -210,19 +210,12 @@ JAZZMIN_SETTINGS = {
     "copyright": "Erickson Dutra",
     "show_sidebar": True,
     "navigation_expanded": True,
-    "order_with_respect_to": ["core"],
+    "order_with_respect_to": ["auth", "core"],
     "show_ui_builder": False,
-    "topmenu_links": [],
+    "topmenu_links": [
+        {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
+    ],
     "user_avatar": None,
-    "custom_links": {
-        "auth": [
-            {
-                "name": "Logout",
-                "url": "/admin/logout/",
-                "icon": "fas fa-sign-out-alt",
-            }
-        ]
-    },
 }
 
 JAZZMIN_UI_TWEAKS = {
