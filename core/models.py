@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
@@ -11,6 +12,14 @@ class Musico(models.Model):
         ("INATIVO", "Inativo"),
         ("AFASTADO", "Afastado Temporariamente"),
     ]
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="musico",
+        null=True,  # Permitir null temporariamente para migração
+        blank=True,
+    )
 
     nome = models.CharField(max_length=100)
     telefone = models.CharField(max_length=20, blank=True, null=True)
