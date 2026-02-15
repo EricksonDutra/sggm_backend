@@ -1,20 +1,19 @@
 {% extends "admin/base_site.html" %}
 {% load static %}
 
-
-
 {% block content %}
 
 <div class="container-fluid">
 
     <h1 class="mb-4">📊 Dashboard Sistema de Gestão de Grupo Musical</h1>
 
+    <!-- Cards de Estatísticas Principais (Para todos) -->
     <div class="row">
 
         <div class="col-lg-3 col-6">
             <div class="small-box bg-info">
                 <div class="inner">
-                    <h3>{{ total_musicos }}</h3>
+                    <h3>{{ total_musicos|default:0 }}</h3>
                     <p>Músicos</p>
                 </div>
             </div>
@@ -23,7 +22,7 @@
         <div class="col-lg-3 col-6">
             <div class="small-box bg-success">
                 <div class="inner">
-                    <h3>{{ total_musicas }}</h3>
+                    <h3>{{ total_musicas|default:0 }}</h3>
                     <p>Músicas</p>
                 </div>
             </div>
@@ -32,7 +31,7 @@
         <div class="col-lg-3 col-6">
             <div class="small-box bg-warning">
                 <div class="inner">
-                    <h3>{{ eventos_futuros }}</h3>
+                    <h3>{{ eventos_futuros|default:0 }}</h3>
                     <p>Eventos Futuros</p>
                 </div>
             </div>
@@ -41,7 +40,7 @@
         <div class="col-lg-3 col-6">
             <div class="small-box bg-danger">
                 <div class="inner">
-                    <h3>{{ escalas_mes }}</h3>
+                    <h3>{{ escalas_mes|default:0 }}</h3>
                     <p>Escalas no mês</p>
                 </div>
             </div>
@@ -49,190 +48,384 @@
 
     </div>
 
-    {% if proximo_evento %}
-    <div class="card mt-4">
-        <div class="card-header">
-            🎯 Próximo Evento
+    <!-- Cards Pessoais do Músico (se for músico comum) -->
+    {% if is_musico_comum %}
+    <div class="row mt-3">
+        <div class="col-lg-6 col-12">
+            <div class="small-box" style="background-color: #17a2b8; color: white;">
+                <div class="inner">
+                    <h3>{{ total_minhas_escalas|default:0 }}</h3>
+                    <p>Minhas Escalas (Total)</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 col-12">
+            <div class="small-box" style="background-color: #6610f2; color: white;">
+                <div class="inner">
+                    <h3>{{ escalas_mes_pessoal|default:0 }}</h3>
+                    <p>Minhas Escalas neste Mês</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Minha Próxima Escala -->
+    {% if proxima_escala %}
+    <div class="card mt-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">🎯 Minha Próxima Escala</h5>
         </div>
         <div class="card-body">
-            <h4>{{ proximo_evento.nome }}</h4>
-            <p>
-                📅 {{ proximo_evento.data_evento }} <br>
-                📍 {{ proximo_evento.local }}
+            <h4 class="text-primary">{{ proxima_escala.evento.nome }}</h4>
+            <p class="mb-2">
+                <strong>📅 Data:</strong> {{ proxima_escala.evento.data_evento|date:"d/m/Y H:i" }} <br>
+                <strong>📍 Local:</strong> {{ proxima_escala.evento.local }} <br>
+                <strong>🎸 Instrumento:</strong> {{ proxima_escala.instrumento_no_evento.nome }}
             </p>
         </div>
     </div>
     {% endif %}
 
-    <div class="card mt-4">
-    <div class="card-header">
-        🎵 Ranking de Músicas Mais Usadas
+    <!-- Minhas Próximas Escalas -->
+    {% if minhas_escalas_futuras %}
+    <div class="card mt-4 border-info">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">📅 Minhas Próximas Escalas</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Evento</th>
+                            <th>Data</th>
+                            <th>Instrumento</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for escala in minhas_escalas_futuras %}
+                        <tr>
+                            <td><strong>{{ escala.evento.nome }}</strong></td>
+                            <td>{{ escala.evento.data_evento|date:"d/m/Y H:i" }}</td>
+                            <td>{{ escala.instrumento_no_evento.nome }}</td>
+                            <td>
+                                {% if escala.confirmado %}
+                                    <span class="badge bg-success">✓ Confirmado</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">⏳ Pendente</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-    <div class="card-body">
+    {% endif %}
+    {% endif %}
 
-        {% if ranking_musicas %}
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Música</th>
-                        <th>Artista</th>
-                        <th>Qtd. Eventos</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for musica in ranking_musicas %}
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ musica.titulo }}</td>
-                        <td>{{ musica.artista }}</td>
-                        <td>
-                            <span class="badge bg-success">
-                                {{ musica.total_eventos }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>Nenhuma música utilizada ainda.</p>
-        {% endif %}
-
+    <!-- Próximo Evento (Para todos) -->
+    {% if proximo_evento %}
+    <div class="card mt-4 border-success shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">🎯 Próximo Evento</h5>
+        </div>
+        <div class="card-body">
+            <h4 class="text-success">{{ proximo_evento.nome }}</h4>
+            <p class="mb-0">
+                <strong>📅 Data:</strong> {{ proximo_evento.data_evento|date:"d/m/Y H:i" }} <br>
+                <strong>📍 Local:</strong> {{ proximo_evento.local }}
+            </p>
+        </div>
     </div>
-</div>
+    {% endif %}
 
-<div class="card mt-4 border-danger">
-    <div class="card-header bg-danger text-white">
-        🚨 Alerta de Sobrecarga
-    </div>
-    <div class="card-body">
-
-        {% if sobrecarga %}
-            <ul class="list-group">
-                {% for item in sobrecarga %}
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>
-                        👤 {{ item.musico.nome }}
-                    </span>
-                    <span class="badge bg-danger">
-                        {{ item.sequencia }} eventos seguidos
-                    </span>
+    <!-- Sistema de Abas para Análises e Rankings -->
+    <div class="card mt-4 shadow-sm">
+        <div class="card-header bg-light">
+            <ul class="nav nav-tabs card-header-tabs" id="dashboardTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="musicas-tab" data-bs-toggle="tab" data-bs-target="#musicas" type="button" role="tab" aria-controls="musicas" aria-selected="true">
+                        🎵 Ranking de Músicas
+                    </button>
                 </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="text-success">Nenhum músico sobrecarregado 🎉</p>
-        {% endif %}
-
-    </div>
-</div>
-
-
-<div class="card mt-4">
-    <div class="card-header">
-        👥 Músicos Mais Escalados
-    </div>
-    <div class="card-body">
-
-        {% if ranking_musicos %}
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Músico</th>
-                        <th>Telefone</th>
-                        <th>Qtd. Escalas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for musico in ranking_musicos %}
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ musico.nome }}</td>
-                        <td>{{ musico.telefone }}</td>
-                        <td>
-                            <span class="badge bg-info">
-                                {{ musico.total_escalas }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>Nenhuma escala registrada.</p>
-        {% endif %}
-
-    </div>
-</div>
-
-<div class="card mt-4">
-    <div class="card-header">
-        ⚖️ Músicos Menos Escalados
-    </div>
-    <div class="card-body">
-
-        {% if ranking_menos_escalados %}
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Músico</th>
-                        <th>Telefone</th>
-                        <th>Qtd. Escalas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for musico in ranking_menos_escalados %}
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ musico.nome }}</td>
-                        <td>{{ musico.telefone }}</td>
-                        <td>
-                            <span class="badge bg-warning">
-                                {{ musico.total_escalas }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>Nenhuma informação disponível.</p>
-        {% endif %}
-
-    </div>
-</div>
-
-
-
-<div class="card mt-4">
-    <div class="card-header">
-        🤖 Sugestão Inteligente de Repertório
-    </div>
-    <div class="card-body">
-
-        {% if sugestao_repertorio %}
-            <ul class="list-group">
-                {% for musica in sugestao_repertorio %}
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>
-                        🎵 {{ musica.titulo }} - {{ musica.artista }}
-                    </span>
-                    <span class="badge bg-primary">
-                        {{ musica.total_eventos }} usos históricos
-                    </span>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="sobrecarga-tab" data-bs-toggle="tab" data-bs-target="#sobrecarga" type="button" role="tab" aria-controls="sobrecarga" aria-selected="false">
+                        🚨 Alerta de Sobrecarga
+                    </button>
                 </li>
-                {% endfor %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="mais-escalados-tab" data-bs-toggle="tab" data-bs-target="#mais-escalados" type="button" role="tab" aria-controls="mais-escalados" aria-selected="false">
+                        👥 Mais Escalados
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="menos-escalados-tab" data-bs-toggle="tab" data-bs-target="#menos-escalados" type="button" role="tab" aria-controls="menos-escalados" aria-selected="false">
+                        ⚖️ Menos Escalados
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="sugestoes-tab" data-bs-toggle="tab" data-bs-target="#sugestoes" type="button" role="tab" aria-controls="sugestoes" aria-selected="false">
+                        🤖 Sugestões de Repertório
+                    </button>
+                </li>
             </ul>
-        {% else %}
-            <p>Sem sugestões disponíveis.</p>
-        {% endif %}
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="dashboardTabsContent">
+                
+                <!-- Tab: Ranking de Músicas -->
+                <div class="tab-pane fade show active" id="musicas" role="tabpanel" aria-labelledby="musicas-tab">
+                    {% if ranking_musicas %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="60">#</th>
+                                        <th>Música</th>
+                                        <th>Artista</th>
+                                        <th width="150" class="text-center">Qtd. Eventos</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for musica in ranking_musicas %}
+                                    <tr>
+                                        <td class="text-center">
+                                            {% if forloop.counter == 1 %}
+                                                <span class="badge bg-warning text-dark fs-6">🥇 {{ forloop.counter }}</span>
+                                            {% elif forloop.counter == 2 %}
+                                                <span class="badge bg-secondary fs-6">🥈 {{ forloop.counter }}</span>
+                                            {% elif forloop.counter == 3 %}
+                                                <span class="badge bg-secondary fs-6">🥉 {{ forloop.counter }}</span>
+                                            {% else %}
+                                                <strong>{{ forloop.counter }}</strong>
+                                            {% endif %}
+                                        </td>
+                                        <td><strong>{{ musica.titulo }}</strong></td>
+                                        <td class="text-muted">{{ musica.artista }}</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-success fs-6">
+                                                {{ musica.total_eventos }} evento{{ musica.total_eventos|pluralize }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0" role="alert">
+                            <i class="fas fa-info-circle"></i> Nenhuma música utilizada ainda.
+                        </div>
+                    {% endif %}
+                </div>
 
+                <!-- Tab: Alerta de Sobrecarga -->
+                <div class="tab-pane fade" id="sobrecarga" role="tabpanel" aria-labelledby="sobrecarga-tab">
+                    {% if sobrecarga %}
+                        <div class="alert alert-danger" role="alert">
+                            <strong>⚠️ Atenção!</strong> Os seguintes músicos têm eventos consecutivos demais:
+                        </div>
+                        <ul class="list-group">
+                            {% for item in sobrecarga %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="fas fa-user"></i> <strong>{{ item.musico.nome }}</strong>
+                                </span>
+                                <span class="badge bg-danger rounded-pill fs-6">
+                                    🔥 {{ item.sequencia }} eventos seguidos
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="alert alert-success mb-0" role="alert">
+                            <i class="fas fa-check-circle"></i> <strong>Nenhum músico sobrecarregado!</strong> 🎉 A distribuição de escalas está equilibrada.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Tab: Músicos Mais Escalados -->
+                <div class="tab-pane fade" id="mais-escalados" role="tabpanel" aria-labelledby="mais-escalados-tab">
+                    {% if ranking_musicos %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="60">#</th>
+                                        <th>Músico</th>
+                                        <th>Telefone</th>
+                                        <th width="150" class="text-center">Qtd. Escalas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for musico in ranking_musicos %}
+                                    <tr>
+                                        <td class="text-center">
+                                            {% if forloop.counter == 1 %}
+                                                <span class="badge bg-warning text-dark fs-6">🥇 {{ forloop.counter }}</span>
+                                            {% elif forloop.counter == 2 %}
+                                                <span class="badge bg-secondary fs-6">🥈 {{ forloop.counter }}</span>
+                                            {% elif forloop.counter == 3 %}
+                                                <span class="badge bg-secondary fs-6">🥉 {{ forloop.counter }}</span>
+                                            {% else %}
+                                                <strong>{{ forloop.counter }}</strong>
+                                            {% endif %}
+                                        </td>
+                                        <td><strong>{{ musico.nome }}</strong></td>
+                                        <td class="text-muted">{{ musico.telefone }}</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-info fs-6">
+                                                {{ musico.total_escalas }} escala{{ musico.total_escalas|pluralize }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0" role="alert">
+                            <i class="fas fa-info-circle"></i> Nenhuma escala registrada.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Tab: Músicos Menos Escalados -->
+                <div class="tab-pane fade" id="menos-escalados" role="tabpanel" aria-labelledby="menos-escalados-tab">
+                    {% if ranking_menos_escalados %}
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> <strong>Atenção:</strong> Estes músicos têm poucas escalas este mês.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="60">#</th>
+                                        <th>Músico</th>
+                                        <th>Telefone</th>
+                                        <th width="150" class="text-center">Qtd. Escalas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for musico in ranking_menos_escalados %}
+                                    <tr>
+                                        <td class="text-center"><strong>{{ forloop.counter }}</strong></td>
+                                        <td><strong>{{ musico.nome }}</strong></td>
+                                        <td class="text-muted">{{ musico.telefone }}</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-warning text-dark fs-6">
+                                                {{ musico.total_escalas }} escala{{ musico.total_escalas|pluralize }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0" role="alert">
+                            <i class="fas fa-info-circle"></i> Nenhuma informação disponível.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Tab: Sugestões de Repertório -->
+                <div class="tab-pane fade" id="sugestoes" role="tabpanel" aria-labelledby="sugestoes-tab">
+                    {% if sugestao_repertorio %}
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-lightbulb"></i> <strong>Músicas sugeridas</strong> que não foram tocadas recentemente:
+                        </div>
+                        <ul class="list-group">
+                            {% for musica in sugestao_repertorio %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="fas fa-music text-primary"></i> <strong>{{ musica.titulo }}</strong> - <span class="text-muted">{{ musica.artista }}</span>
+                                </span>
+                                <span class="badge bg-primary rounded-pill fs-6">
+                                    📊 {{ musica.total_eventos }} uso{{ musica.total_eventos|pluralize }} histórico{{ musica.total_eventos|pluralize }}
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="alert alert-info mb-0" role="alert">
+                            <i class="fas fa-info-circle"></i> Sem sugestões disponíveis no momento.
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
     </div>
-</div>
-
 
 </div>
+
+<style>
+    /* Melhorias visuais */
+    .small-box {
+        border-radius: 8px;
+        padding: 20px;
+        color: white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    
+    .small-box:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .card {
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    
+    .card-header {
+        border-radius: 8px 8px 0 0 !important;
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #495057;
+        border: none;
+        padding: 12px 20px;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        background-color: #f8f9fa;
+        color: #007bff;
+    }
+    
+    .nav-tabs .nav-link.active {
+        background-color: #fff;
+        color: #007bff;
+        border-bottom: 3px solid #007bff;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .badge {
+        padding: 6px 12px;
+    }
+    
+    .list-group-item {
+        border-left: 3px solid transparent;
+        transition: all 0.2s;
+    }
+    
+    .list-group-item:hover {
+        border-left-color: #007bff;
+        background-color: #f8f9fa;
+    }
+</style>
+
 {% endblock %}

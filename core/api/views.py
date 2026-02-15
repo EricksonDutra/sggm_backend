@@ -3,6 +3,8 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core.api.permissions import IsLiderOrReadOnly, IsMusicoOwnerOrLider
 from core.models import Escala, Evento, Instrumento, Musica, Musico
@@ -16,6 +18,55 @@ from .serializers import (
     MusicoCreateSerializer,
     MusicoSerializer,
 )
+
+
+# =====================================================
+# JWT LOGIN CUSTOMIZADO
+# =====================================================
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Serializer customizado para incluir dados do músico no token JWT.
+    """
+
+    def validate(self, attrs):
+        # Obtém o token padrão
+        data = super().validate(attrs)
+
+        print(f"🔐 Login - User: {self.user.username}")
+
+        # Adiciona informações extras do músico
+        if hasattr(self.user, "musico"):
+            musico = self.user.musico
+            data["musico_id"] = musico.id
+            data["nome"] = musico.nome
+            data["username"] = self.user.username
+            data["email"] = musico.email
+            data["tipo_usuario"] = musico.tipo_usuario
+            data["is_lider"] = musico.tipo_usuario in ["LIDER", "ADMIN"]
+            data["is_admin"] = musico.tipo_usuario == "ADMIN"
+
+            print(f"✅ Login bem-sucedido: {musico.nome} ({musico.tipo_usuario})")
+        else:
+            # Usuário sem perfil de músico
+            data["musico_id"] = None
+            data["nome"] = self.user.get_full_name() or self.user.username
+            data["username"] = self.user.username
+            data["email"] = self.user.email
+            data["tipo_usuario"] = "USER"
+            data["is_lider"] = False
+            data["is_admin"] = self.user.is_superuser
+
+            print(f"⚠️ Login de usuário sem perfil de músico: {self.user.username}")
+
+        return data
+
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    """
+    View customizada para login com JWT que retorna dados extras do músico.
+    """
+
+    serializer_class = MyTokenObtainPairSerializer
 
 
 class MusicoViewSet(viewsets.ModelViewSet):

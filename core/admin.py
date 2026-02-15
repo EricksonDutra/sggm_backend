@@ -76,14 +76,8 @@ class MusicoAdmin(admin.ModelAdmin):
         return False
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        if hasattr(request.user, "musico"):
-            musico = request.user.musico
-            if musico.tipo_usuario == "MUSICO":
-                return qs.filter(id=musico.id)
-        return qs
+        """Todos podem ver todos os músicos"""
+        return super().get_queryset(request)
 
 
 # =====================================================
@@ -169,16 +163,8 @@ class EventoAdmin(admin.ModelAdmin):
         ).exists()
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        if hasattr(request.user, "musico"):
-            musico = request.user.musico
-            if musico.tipo_usuario == "MUSICO":
-                return qs.filter(data_evento__gte=now())
-        elif request.user.groups.filter(name="Músicos").exists():
-            return qs.filter(data_evento__gte=now())
-        return qs
+        """Todos podem ver todos os eventos"""
+        return super().get_queryset(request)
 
     def get_fieldsets(self, request, obj=None):
         if hasattr(request.user, "musico"):
@@ -259,18 +245,12 @@ class EscalaAdmin(admin.ModelAdmin):
         return readonly
 
     def get_queryset(self, request):
-        qs = (
+        """Todos podem ver todas as escalas"""
+        return (
             super()
             .get_queryset(request)
             .select_related("musico", "evento", "instrumento_no_evento")
         )
-        if request.user.is_superuser:
-            return qs
-        if hasattr(request.user, "musico"):
-            musico = request.user.musico
-            if musico.tipo_usuario == "MUSICO":
-                return qs.filter(musico=musico)
-        return qs
 
 
 # =====================================================
@@ -300,121 +280,154 @@ class CustomAdminSite(admin.AdminSite):
     def dashboard_view(self, request):
         hoje = now()
 
-        # Verificar tipo de usuário
-        is_musico_comum = False
-        if hasattr(request.user, "musico"):
-            is_musico_comum = request.user.musico.tipo_usuario == "MUSICO"
+        print("\n" + "=" * 50)
+        print("🔍 [DASHBOARD] Iniciando dashboard_view")
+        print(f"   User: {request.user.username}")
 
-        if is_musico_comum:
-            # Dashboard para músico comum
-            musico = request.user.musico
-            minhas_escalas = Escala.objects.filter(musico=musico)
+        # ✅ SEMPRE calcular estatísticas gerais PRIMEIRO (para todos)
+        print("   📊 Calculando estatísticas gerais...")
 
-            context = dict(
-                self.each_context(request),
-                is_musico_comum=True,
-                total_minhas_escalas=minhas_escalas.count(),
-                escalas_mes=minhas_escalas.filter(
-                    evento__data_evento__month=hoje.month,
-                    evento__data_evento__year=hoje.year,
-                ).count(),
-                proxima_escala=minhas_escalas.filter(evento__data_evento__gte=hoje)
+        total_musicos = Musico.objects.all().count()
+        total_musicas = Musica.objects.count()
+        eventos_futuros = Evento.objects.filter(data_evento__gte=hoje).count()
+
+        inicio_mes = hoje.replace(day=1)
+        escalas_mes = Escala.objects.filter(
+            evento__data_evento__month=hoje.month,
+            evento__data_evento__year=hoje.year,
+        ).count()
+
+        print(f"   📊 Total Músicos: {total_musicos}")
+        print(f"   📊 Total Músicas: {total_musicas}")
+        print(f"   📊 Eventos futuros: {eventos_futuros}")
+        print(f"   📊 Escalas no mês: {escalas_mes}")
+
+        periodo_bloqueio = hoje - timedelta(days=15)
+
+        musicas_recentes = Musica.objects.filter(
+            eventos__data_evento__gte=periodo_bloqueio
+        ).distinct()
+
+        sugestao_repertorio = (
+            Musica.objects.exclude(id__in=musicas_recentes)
+            .annotate(total_eventos=Count("eventos"))
+            .order_by("-total_eventos")[:5]
+        )
+
+        ranking_musicos = (
+            Musico.objects.all()
+            .annotate(total_escalas=Count("escalas"))
+            .order_by("-total_escalas")[:5]
+        )
+
+        ranking_menos_escalados = (
+            Musico.objects.all()
+            .annotate(
+                total_escalas=Count(
+                    "escalas",
+                    filter=Q(escalas__evento__data_evento__gte=inicio_mes),
+                )
+            )
+            .order_by("total_escalas")[:5]
+        )
+
+        # Alerta de sobrecarga
+        limite_consecutivo = 3
+        sobrecarga = []
+
+        for musico in Musico.objects.all():
+            eventos_musico = (
+                Escala.objects.filter(musico=musico)
                 .select_related("evento")
                 .order_by("evento__data_evento")
-                .first(),
-                minhas_escalas_futuras=minhas_escalas.filter(
-                    evento__data_evento__gte=hoje
+            )
+
+            contador = 1
+            maior_sequencia = 0
+            ultima_data = None
+
+            for escala in eventos_musico:
+                data_atual = escala.evento.data_evento
+
+                if ultima_data:
+                    diferenca = (data_atual - ultima_data).days
+                    if diferenca <= 7:
+                        contador += 1
+                    else:
+                        contador = 1
+
+                maior_sequencia = max(maior_sequencia, contador)
+                ultima_data = data_atual
+
+            if maior_sequencia >= limite_consecutivo:
+                sobrecarga.append({"musico": musico, "sequencia": maior_sequencia})
+
+        proximo_evento = (
+            Evento.objects.filter(data_evento__gte=hoje).order_by("data_evento").first()
+        )
+
+        ranking_musicas = Musica.objects.annotate(
+            total_eventos=Count("eventos")
+        ).order_by("-total_eventos")[:5]
+
+        print(f"   📊 Ranking músicas: {ranking_musicas.count()}")
+        print(
+            f"   📊 Próximo evento: {proximo_evento.nome if proximo_evento else 'Nenhum'}"
+        )
+
+        # ✅ Contexto base com todas as estatísticas (para todos)
+        context = dict(
+            self.each_context(request),
+            is_musico_comum=False,  # Padrão
+            total_musicos=total_musicos,
+            total_musicas=total_musicas,
+            eventos_futuros=eventos_futuros,
+            escalas_mes=escalas_mes,
+            proximo_evento=proximo_evento,
+            ranking_musicas=ranking_musicas,
+            sugestao_repertorio=sugestao_repertorio,
+            ranking_musicos=ranking_musicos,
+            ranking_menos_escalados=ranking_menos_escalados,
+            sobrecarga=sobrecarga,
+        )
+
+        # ✅ DEPOIS adicionar dados pessoais se for músico comum
+        if hasattr(request.user, "musico"):
+            musico = request.user.musico
+            is_musico_comum = musico.tipo_usuario == "MUSICO"
+            print(f"   👤 Tipo usuário: {musico.tipo_usuario}")
+
+            if is_musico_comum:
+                minhas_escalas = Escala.objects.filter(musico=musico)
+
+                # Adicionar dados pessoais ao contexto
+                context.update(
+                    {
+                        "is_musico_comum": True,
+                        "total_minhas_escalas": minhas_escalas.count(),
+                        "escalas_mes_pessoal": minhas_escalas.filter(
+                            evento__data_evento__month=hoje.month,
+                            evento__data_evento__year=hoje.year,
+                        ).count(),
+                        "proxima_escala": minhas_escalas.filter(
+                            evento__data_evento__gte=hoje
+                        )
+                        .select_related("evento", "instrumento_no_evento")
+                        .order_by("evento__data_evento")
+                        .first(),
+                        "minhas_escalas_futuras": minhas_escalas.filter(
+                            evento__data_evento__gte=hoje
+                        )
+                        .select_related("evento", "instrumento_no_evento")
+                        .order_by("evento__data_evento")[:5],
+                    }
                 )
-                .select_related("evento", "instrumento_no_evento")
-                .order_by("evento__data_evento")[:5],
-            )
-        else:
-            # Dashboard completo para líderes e admins
-            periodo_bloqueio = hoje - timedelta(days=15)
 
-            musicas_recentes = Musica.objects.filter(
-                eventos__data_evento__gte=periodo_bloqueio
-            ).distinct()
+                print(f"   📊 Minhas escalas: {context['total_minhas_escalas']}")
 
-            sugestao_repertorio = (
-                Musica.objects.exclude(id__in=musicas_recentes)
-                .annotate(total_eventos=Count("eventos"))
-                .order_by("-total_eventos")[:5]
-            )
-
-            ranking_musicos = (
-                Musico.objects.filter(status="ATIVO")
-                .annotate(total_escalas=Count("escalas"))
-                .order_by("-total_escalas")[:5]
-            )
-
-            inicio_mes = hoje.replace(day=1)
-
-            ranking_menos_escalados = (
-                Musico.objects.filter(status="ATIVO")
-                .annotate(
-                    total_escalas=Count(
-                        "escalas",
-                        filter=Q(escalas__evento__data_evento__gte=inicio_mes),
-                    )
-                )
-                .order_by("total_escalas")[:5]
-            )
-
-            # Alerta de sobrecarga
-            limite_consecutivo = 3
-            sobrecarga = []
-
-            for musico in Musico.objects.filter(status="ATIVO"):
-                eventos_musico = (
-                    Escala.objects.filter(musico=musico)
-                    .select_related("evento")
-                    .order_by("evento__data_evento")
-                )
-
-                contador = 1
-                maior_sequencia = 0
-                ultima_data = None
-
-                for escala in eventos_musico:
-                    data_atual = escala.evento.data_evento
-
-                    if ultima_data:
-                        diferenca = (data_atual - ultima_data).days
-                        if diferenca <= 7:
-                            contador += 1
-                        else:
-                            contador = 1
-
-                    maior_sequencia = max(maior_sequencia, contador)
-                    ultima_data = data_atual
-
-                if maior_sequencia >= limite_consecutivo:
-                    sobrecarga.append({"musico": musico, "sequencia": maior_sequencia})
-
-            context = dict(
-                self.each_context(request),
-                is_musico_comum=False,
-                total_musicos=Musico.objects.filter(status="ATIVO").count(),
-                total_musicas=Musica.objects.count(),
-                eventos_futuros=Evento.objects.filter(data_evento__gte=hoje).count(),
-                escalas_mes=Escala.objects.filter(
-                    evento__data_evento__month=hoje.month,
-                    evento__data_evento__year=hoje.year,
-                ).count(),
-                proximo_evento=Evento.objects.filter(data_evento__gte=hoje)
-                .order_by("data_evento")
-                .first(),
-                ranking_musicas=(
-                    Musica.objects.annotate(total_eventos=Count("eventos")).order_by(
-                        "-total_eventos"
-                    )[:5]
-                ),
-                sugestao_repertorio=sugestao_repertorio,
-                ranking_musicos=ranking_musicos,
-                ranking_menos_escalados=ranking_menos_escalados,
-                sobrecarga=sobrecarga,
-            )
+        print("✅ [DASHBOARD] Contexto preparado")
+        print(f"   Context keys: {list(context.keys())}")
+        print("=" * 50 + "\n")
 
         return TemplateResponse(request, "admin/dashboard.html", context)
 
@@ -422,6 +435,9 @@ class CustomAdminSite(admin.AdminSite):
         return self.dashboard_view(request)
 
 
+# =====================================================
+# REGISTRO DOS MODELOS
+# =====================================================
 admin_site = CustomAdminSite(name="custom_admin")
 
 admin_site.register(User, UserAdmin)
