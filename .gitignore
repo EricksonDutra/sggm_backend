@@ -148,3 +148,4 @@ media/
 db.sqlite3
 sggm-102e2-firebase-adminsdk-fbsvc-d73b085f15.json
 serviceAccountKey.json
+"SGGM/old_settings.py" 
