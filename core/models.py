@@ -53,6 +53,12 @@ class Musico(models.Model):
         max_length=255, blank=True, null=True, verbose_name="Token FCM"
     )
 
+    role = models.CharField(
+        max_length=20,
+        choices=[("MUSICO", "Músico"), ("LIDER", "Líder")],
+        default="MUSICO",
+    )
+
     def esta_afastado(self):
         hoje = timezone.now().date()
 
