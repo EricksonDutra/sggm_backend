@@ -119,6 +119,10 @@ class Musico(models.Model):
         """Retorna o email do usuário vinculado"""
         return self.user.email if self.user else None
 
+    @email.setter
+    def email(self, value):
+        self._email = value
+
     def esta_disponivel(self):
         """
         Verifica se o músico está disponível hoje.
@@ -185,7 +189,6 @@ class Evento(models.Model):
 class Escala(models.Model):
 
     musico = models.ForeignKey(Musico, on_delete=models.PROTECT, related_name="escalas")
-
     evento = models.ForeignKey(Evento, on_delete=models.CASCADE, related_name="escalas")
 
     instrumento_no_evento = models.ForeignKey(
@@ -199,32 +202,33 @@ class Escala(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
-        musico = self.musico
+        """Validações de negócio"""
+        from django.core.exceptions import ValidationError
 
-        # músico inativo
-        if musico.status == "INATIVO":
-            raise ValidationError("Músico inativo não pode ser escalado.")
+        # ✅ Validar se músico está ativo
+        if self.musico.status != "ATIVO":
+            raise ValidationError(
+                "Músico deve estar com status ATIVO para ser escalado"
+            )
 
-        # músico afastado no período
-        if musico.status == "AFASTADO":
-            hoje = timezone.now().date()
-
-            if (
-                musico.data_inicio_inatividade
-                and musico.data_fim_inatividade
-                and musico.data_inicio_inatividade
-                <= hoje
-                <= musico.data_fim_inatividade
-            ):
-                raise ValidationError("Músico afastado nesse período.")
+        # ✅ Validar afastamento
+        if hasattr(self.musico, "afastamento_set"):
+            afastamentos = self.musico.afastamento_set.filter(
+                data_inicio__lte=self.evento.data_evento.date(),
+                data_fim__gte=self.evento.data_evento.date(),
+            )
+            if afastamentos.exists():
+                raise ValidationError("Músico está afastado neste período")
 
     def save(self, *args, **kwargs):
+        # ✅ Chamar clean() antes de salvar
         self.full_clean()
         super().save(*args, **kwargs)
 
     class Meta:
         db_table = "escalas"
-        unique_together = ("musico", "evento")
+        unique_together = ["musico", "evento"]
+
         verbose_name = "Escala"
         verbose_name_plural = "Escalas"
         ordering = ["evento__data_evento"]
