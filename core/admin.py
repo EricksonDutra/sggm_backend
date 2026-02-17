@@ -8,7 +8,7 @@ from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils.timezone import now
 
-from .models import Escala, Evento, Instrumento, Musica, Musico
+from .models import Artista, Escala, Evento, Instrumento, Musica, Musico
 
 
 # =====================================================
@@ -435,6 +435,18 @@ class CustomAdminSite(admin.AdminSite):
         return self.dashboard_view(request)
 
 
+@admin.register(Artista)
+class ArtistaAdmin(admin.ModelAdmin):
+    list_display = ["nome", "total_musicas", "criado_em"]
+    search_fields = ["nome"]
+    ordering = ["nome"]
+
+    def total_musicas(self, obj):
+        return obj.musicas.count()
+
+    total_musicas.short_description = "Total de Músicas"
+
+
 # =====================================================
 # REGISTRO DOS MODELOS
 # =====================================================
@@ -444,6 +456,7 @@ admin_site.register(User, UserAdmin)
 admin_site.register(Group, GroupAdmin)
 admin_site.register(Musico, MusicoAdmin)
 admin_site.register(Musica, MusicaAdmin)
+admin_site.register(Artista, ArtistaAdmin)
 admin_site.register(Evento, EventoAdmin)
 admin_site.register(Escala, EscalaAdmin)
 admin_site.register(Instrumento, InstrumentoAdmin)
