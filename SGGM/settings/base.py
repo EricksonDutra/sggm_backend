@@ -45,7 +45,7 @@ SECRET_KEY = env("SECRET_KEY")
 # APPLICATIONS
 # ==============================================================================
 INSTALLED_APPS = [
-    "jazzmin",
+    # "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
