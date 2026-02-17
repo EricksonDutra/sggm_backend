@@ -2,7 +2,7 @@
 Configurações para ambiente de produção.
 """
 
-from .base import *
+from SGGM.settings.base import *  # noqa: F403
 
 # ==============================================================================
 # DEBUG
