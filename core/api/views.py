@@ -150,9 +150,41 @@ class MusicoViewSet(MusicoPermissionMixin, viewsets.ModelViewSet):
         return queryset.none()
 
     def get_serializer_class(self):
-        """Usa serializer específico para criação."""
+        """✅ ATUALIZADO: Usa serializers específicos por ação e permissão"""
+
+        # Criação: sempre usa MusicoCreateSerializer
         if self.action == "create":
             return MusicoCreateSerializer
+
+        # Atualização: depende de quem está atualizando
+        if self.action in ["update", "partial_update"]:
+            # Importar aqui para evitar circular import
+            from .serializers import (
+                MusicoUpdateLiderSerializer,
+                MusicoUpdateSelfSerializer,
+            )
+
+            user = self.request.user
+
+            # Superuser sempre pode usar serializer completo
+            if user.is_superuser:
+                return MusicoUpdateLiderSerializer
+
+            # Verificar se tem perfil de músico
+            if hasattr(user, "musico"):
+                musico = user.musico
+
+                # Líder/Admin usa serializer completo
+                if musico.tipo_usuario in ["LIDER", "ADMIN"]:
+                    return MusicoUpdateLiderSerializer
+
+                # Músico comum usa serializer limitado
+                return MusicoUpdateSelfSerializer
+
+            # Fallback
+            return MusicoUpdateSelfSerializer
+
+        # Leitura: usa serializer padrão
         return MusicoSerializer
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
@@ -218,6 +250,71 @@ class MusicoViewSet(MusicoPermissionMixin, viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated])
+    def mudar_senha(self, request):
+        """
+        Mudar senha do usuário autenticado.
+        POST /api/musicos/mudar_senha/
+
+        Body: {
+            "senha_atual": "string",
+            "senha_nova": "string",
+            "confirmar_senha": "string"
+        }
+        """
+        if not hasattr(request.user, "musico"):
+            return Response(
+                {"error": "Usuário não possui perfil de músico"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        user = request.user
+        senha_atual = request.data.get("senha_atual")
+        senha_nova = request.data.get("senha_nova")
+        confirmar_senha = request.data.get("confirmar_senha")
+
+        # Validações
+        if not all([senha_atual, senha_nova, confirmar_senha]):
+            return Response(
+                {"error": "Todos os campos são obrigatórios"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verificar se senha atual está correta
+        if not user.check_password(senha_atual):
+            return Response(
+                {"error": "Senha atual incorreta"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verificar se senhas novas coincidem
+        if senha_nova != confirmar_senha:
+            return Response(
+                {"error": "As senhas novas não coincidem"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validar tamanho mínimo
+        if len(senha_nova) < 8:
+            return Response(
+                {"error": "A senha deve ter no mínimo 8 caracteres"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Atualizar senha
+        user.set_password(senha_nova)
+        user.save()
+
+        print(f"🔐 Senha alterada para {user.musico.nome}")
+
+        return Response(
+            {
+                "status": "Senha alterada com sucesso",
+                "message": "Sua senha foi atualizada. Use a nova senha no próximo login.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
     def escalas(self, request, pk=None):
         """
@@ -273,7 +370,6 @@ class MusicaViewSet(viewsets.ModelViewSet):
     ViewSet para gerenciar músicas do repertório.
     """
 
-    # ✅ CORRIGIDO: Adicionado queryset como atributo de classe
     queryset = Musica.objects.all().order_by("titulo")
 
     serializer_class = MusicaSerializer
@@ -564,5 +660,3 @@ class InstrumentoViewSet(viewsets.ModelViewSet):
     search_fields = ["nome", "categoria"]
     ordering_fields = ["nome", "categoria"]
     ordering = ["nome"]
-
-    # ✅ REMOVIDO: get_queryset() desnecessário quando não há customização

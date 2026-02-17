@@ -59,11 +59,19 @@ class Musico(models.Model):
         default="MUSICO",
     )
 
+    precisa_mudar_senha = models.BooleanField(
+        default=True,
+        help_text="True se o usuário precisa mudar a senha no próximo login",
+    )
+
     def esta_afastado(self):
         hoje = timezone.now().date()
 
         if self.status != "AFASTADO":
             return False
+
+        if not self.data_inicio_inatividade or not self.data_fim_inatividade:
+            return True
 
         if self.data_inicio_inatividade and self.data_fim_inatividade:
             return self.data_inicio_inatividade <= hoje <= self.data_fim_inatividade
@@ -138,7 +146,12 @@ class Musico(models.Model):
         if self.status == "ATIVO":
             return True
 
+        if self.status == "INATIVO":
+            return False
+
         if self.status == "AFASTADO":
+            if not self.data_inicio_inatividade or not self.data_fim_inatividade:
+                return False
             if self.data_inicio_inatividade and self.data_fim_inatividade:
                 return not (
                     self.data_inicio_inatividade <= hoje <= self.data_fim_inatividade

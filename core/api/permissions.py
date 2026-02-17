@@ -50,10 +50,20 @@ class IsAdminUser(permissions.BasePermission):
 
 class IsMusicoOwnerOrLider(permissions.BasePermission):
     """
-    Permite que músicos editem apenas seu próprio perfil.
-    Líderes e admins podem editar qualquer perfil.
+    Permite que músicos editem apenas seu próprio perfil (campos limitados).
+    Líderes e admins podem editar qualquer perfil (todos os campos).
     Todos podem ler (visualizar).
     """
+
+    # Campos que músicos comuns podem editar
+    MUSICO_EDITABLE_FIELDS = {
+        "telefone",
+        "endereco",
+        "status",
+        "data_inicio_inatividade",
+        "data_fim_inatividade",
+        "motivo_inatividade",
+    }
 
     def has_permission(self, request, view):
         """
@@ -72,7 +82,6 @@ class IsMusicoOwnerOrLider(permissions.BasePermission):
             return True
 
         # Para escrita, verificar se usuário tem perfil de músico
-        # (a verificação específica de propriedade será feita em has_object_permission)
         if hasattr(request.user, "musico"):
             return True
 
@@ -81,7 +90,6 @@ class IsMusicoOwnerOrLider(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         """
         Verificação no nível do objeto (após recuperar o objeto específico).
-        Este método só é chamado se has_permission retornar True.
         """
         # Leitura permitida para todos os usuários autenticados
         if request.method in permissions.SAFE_METHODS:
@@ -97,12 +105,35 @@ class IsMusicoOwnerOrLider(permissions.BasePermission):
 
         musico_logado = request.user.musico
 
-        # Líder pode editar qualquer perfil
+        # Líder pode editar qualquer perfil (todos os campos)
         if musico_logado.is_lider():
             return True
 
-        # Músico comum pode editar apenas seu próprio perfil
-        return obj.id == musico_logado.id
+        # Músico comum: só pode editar seu próprio perfil
+        if obj.id != musico_logado.id:
+            return False
+
+        # Verificar se está editando apenas campos permitidos
+        if request.method in ["PUT", "PATCH"] and hasattr(request, "data"):
+            submitted_fields = set(request.data.keys())
+            # Remover campos read-only que podem vir na requisição
+            submitted_fields.discard("id")
+            submitted_fields.discard("user")
+            submitted_fields.discard("email")
+            submitted_fields.discard("data_cadastro")
+            submitted_fields.discard("esta_disponivel")
+            submitted_fields.discard("esta_afastado")
+
+            # Verificar se está tentando editar campos não permitidos
+            campos_nao_permitidos = submitted_fields - self.MUSICO_EDITABLE_FIELDS
+            if campos_nao_permitidos:
+                # Log para debug
+                print(
+                    f"❌ Músico {musico_logado.nome} tentou editar campos não permitidos: {campos_nao_permitidos}"
+                )
+                return False
+
+        return True
 
 
 class IsMusicoOwner(permissions.BasePermission):

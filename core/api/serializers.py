@@ -67,33 +67,25 @@ class MusicoSerializer(serializers.ModelSerializer):
 
 
 class MusicoCreateSerializer(serializers.ModelSerializer):
-    """Serializer para criação de músico com usuário"""
+    """
+    ✅ CORRIGIDO: Serializer para criação de músico
+    Gera username e senha automaticamente baseado no email
+    """
 
-    username = serializers.CharField(write_only=True)
-    password = serializers.CharField(
-        write_only=True, style={"input_type": "password"}, min_length=8
-    )
+    # ✅ IMPORTANTE: email como campo write_only separado
     email = serializers.EmailField(write_only=True)
 
     class Meta:
         model = Musico
         fields = [
-            "username",
-            "password",
-            "email",
             "nome",
             "telefone",
+            "email",
             "endereco",
             "instrumento_principal",
             "tipo_usuario",
             "status",
         ]
-
-    def validate_username(self, value):
-        """Valida se username já existe"""
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("Este nome de usuário já está em uso.")
-        return value
 
     def validate_email(self, value):
         """Valida se email já existe"""
@@ -102,42 +94,65 @@ class MusicoCreateSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        # Extrair dados do usuário
-        username = validated_data.pop("username")
-        password = validated_data.pop("password")
-        email = validated_data.pop("email")
+        """
+        Cria músico com User automático
+        - Username: baseado no email (ex: jorge@ipb.com.br -> jorge)
+        - Senha padrão: Musico@2024
+        """
+
+        # ✅ Extrair email ANTES de passar para Musico.objects.create
+        email = validated_data.pop("email")  # ✅ USAR POP para remover do dict
+        nome_completo = validated_data.get("nome", "")
+
+        # Gerar username base do email
+        username_base = email.split("@")[0].lower()
+
+        # ✅ Garantir username único
+        username = username_base
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{username_base}{counter}"
+            counter += 1
+
+        # ✅ Criar User com senha padrão
+        senha_padrao = "Musico@2024"
 
         # Dividir nome para first_name e last_name
-        nome_completo = validated_data.get("nome", "")
         partes_nome = nome_completo.split()
         first_name = partes_nome[0] if partes_nome else ""
         last_name = " ".join(partes_nome[1:]) if len(partes_nome) > 1 else ""
 
-        # Criar usuário
         user = User.objects.create_user(
             username=username,
             email=email,
-            password=password,
+            password=senha_padrao,
             first_name=first_name,
             last_name=last_name,
         )
 
-        # Criar músico vinculado
-        musico = Musico.objects.create(user=user, **validated_data)
+        # ✅ Criar Musico vinculado ao User
+        # Agora validated_data NÃO contém mais 'email'
+        musico = Musico.objects.create(
+            user=user, **validated_data  # ✅ Só contém campos válidos do modelo Musico
+        )
 
-        print(f"✅ Novo músico criado: {musico.nome} (User: {user.username})")
+        print(f"✅ Músico criado: {musico.nome}")
+        print(f"   Username: {username}")
+        print(f"   Email: {email}")
+        print(f"   Senha padrão: {senha_padrao}")
 
         return musico
 
 
-class MusicoUpdateSerializer(serializers.ModelSerializer):
-    """Serializer para atualização de músico (sem alterar usuário)"""
+class MusicoUpdateLiderSerializer(serializers.ModelSerializer):
+    """Serializer para líder atualizar qualquer músico"""
 
     class Meta:
         model = Musico
         fields = [
             "nome",
             "telefone",
+            "email",
             "endereco",
             "instrumento_principal",
             "tipo_usuario",
@@ -147,23 +162,76 @@ class MusicoUpdateSerializer(serializers.ModelSerializer):
             "motivo_inatividade",
         ]
 
-    def validate(self, data):
-        """Validações customizadas"""
-        # Se status for AFASTADO, validar datas
-        if data.get("status") == "AFASTADO":
-            if not data.get("data_inicio_inatividade") or not data.get(
-                "data_fim_inatividade"
-            ):
-                raise serializers.ValidationError(
-                    "Para status AFASTADO, é necessário informar data de início e fim."
-                )
+    def update(self, instance, validated_data):
+        """Atualizar músico"""
 
-            if data["data_inicio_inatividade"] >= data["data_fim_inatividade"]:
-                raise serializers.ValidationError(
-                    "Data de início deve ser anterior à data de fim."
-                )
+        # ✅ Se email mudou, atualizar no User também
+        if "email" in validated_data and instance.user:
+            instance.user.email = validated_data["email"]
+            instance.user.save()
 
-        return data
+        # ✅ Se nome mudou, atualizar no User também
+        if "nome" in validated_data and instance.user:
+            instance.user.first_name = (
+                validated_data["nome"].split()[0] if validated_data["nome"] else ""
+            )
+            instance.user.save()
+
+        # ✅ Atualizar campos do Musico
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
+
+
+class MusicoUpdateSelfSerializer(serializers.ModelSerializer):
+    """Serializer para músico atualizar próprio perfil (campos limitados)"""
+
+    class Meta:
+        model = Musico
+        fields = [
+            "telefone",
+            "endereco",
+            "status",
+            "data_inicio_inatividade",
+            "data_fim_inatividade",
+            "motivo_inatividade",
+        ]
+
+    def validate_status(self, value):
+        """Músico comum só pode se afastar, não inativar definitivamente"""
+        if value == "INATIVO":
+            raise serializers.ValidationError(
+                "Apenas líderes podem inativar músicos definitivamente."
+            )
+        return value
+
+
+class MusicoListSerializer(serializers.ModelSerializer):
+    """Serializer para listar músicos"""
+
+    instrumento_principal_nome = serializers.CharField(
+        source="instrumento_principal.nome", read_only=True
+    )
+
+    class Meta:
+        model = Musico
+        fields = [
+            "id",
+            "nome",
+            "telefone",
+            "email",
+            "endereco",
+            "instrumento_principal",
+            "instrumento_principal_nome",
+            "tipo_usuario",
+            "status",
+            "data_inicio_inatividade",
+            "data_fim_inatividade",
+            "motivo_inatividade",
+            "data_cadastro",
+        ]
 
 
 # -------------------------
@@ -419,6 +487,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             data["is_lider"] = musico.is_lider()
             data["is_admin"] = musico.is_admin()
             data["status"] = musico.status
+            data["precisa_mudar_senha"] = musico.precisa_mudar_senha
             data["instrumento_principal"] = (
                 {
                     "id": musico.instrumento_principal.id,
@@ -430,6 +499,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         else:
             data["is_lider"] = self.user.is_superuser
             data["is_admin"] = self.user.is_superuser
+            data["precisa_mudar_senha"] = False
             data["message"] = "Usuário sem perfil de músico vinculado"
 
         return data
