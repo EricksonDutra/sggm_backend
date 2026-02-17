@@ -162,7 +162,12 @@ class Musico(models.Model):
 
 class Musica(models.Model):
     titulo = models.CharField(max_length=100)
-    artista = models.CharField(max_length=100)
+    artista = models.ForeignKey(
+        "Artista",
+        on_delete=models.PROTECT,  # Impede deletar artista com músicas
+        related_name="musicas",
+        verbose_name="Artista/Banda",
+    )
     tom = models.CharField(max_length=10, blank=True, null=True)
     link_cifra = models.URLField(max_length=200, blank=True, null=True)
     link_youtube = models.URLField(max_length=200, blank=True, null=True)
@@ -171,6 +176,7 @@ class Musica(models.Model):
         db_table = "musicas"
         verbose_name = "Música"
         verbose_name_plural = "Músicas"
+        unique_together = [["titulo", "artista"]]
 
     def __str__(self):
         return f"{self.titulo} - {self.artista}"
@@ -266,3 +272,31 @@ class Instrumento(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+class Artista(models.Model):
+    """
+    Modelo para cadastro de artistas/bandas musicais.
+    Evita inconsistências ao cadastrar músicas.
+    """
+
+    nome = models.CharField(
+        max_length=150, unique=True, verbose_name="Nome do Artista/Banda"
+    )
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "artistas"
+        verbose_name = "Artista"
+        verbose_name_plural = "Artistas"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+    def clean(self):
+        """Remove espaços extras e padroniza o nome"""
+        if self.nome:
+            self.nome = self.nome.strip()
