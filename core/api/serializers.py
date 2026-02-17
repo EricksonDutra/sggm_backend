@@ -4,7 +4,7 @@ from django.contrib.auth.models import (
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from core.models import Escala, Evento, Instrumento, Musica, Musico
+from core.models import Artista, Escala, Evento, Instrumento, Musica, Musico
 
 
 # -------------------------
@@ -241,6 +241,7 @@ class MusicaSerializer(serializers.ModelSerializer):
     """Serializer para músicas do repertório"""
 
     total_eventos = serializers.IntegerField(read_only=True, required=False)
+    artista_nome = serializers.CharField(source="artista.nome", read_only=True)
 
     class Meta:
         model = Musica
@@ -248,6 +249,7 @@ class MusicaSerializer(serializers.ModelSerializer):
             "id",
             "titulo",
             "artista",
+            "artista_nome",
             "tom",
             "link_cifra",
             "link_youtube",
@@ -503,3 +505,12 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             data["message"] = "Usuário sem perfil de músico vinculado"
 
         return data
+
+
+class ArtistaSerializer(serializers.ModelSerializer):
+    total_musicas = serializers.IntegerField(source="musicas.count", read_only=True)
+
+    class Meta:
+        model = Artista
+        fields = ["id", "nome", "total_musicas", "criado_em"]
+        read_only_fields = ["criado_em"]

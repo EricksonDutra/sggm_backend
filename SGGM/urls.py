@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from core.admin import admin_site
 from core.api.views import (
+    ArtistaViewSet,
     EscalaViewSet,
     EventoViewSet,
     InstrumentoViewSet,
@@ -18,6 +19,8 @@ router.register(r"musicos", MusicoViewSet)
 router.register(r"escalas", EscalaViewSet)
 router.register(r"musicas", MusicaViewSet)
 router.register(r"instrumentos", InstrumentoViewSet)
+router.register(r"artistas", ArtistaViewSet, basename="artista")
+
 
 urlpatterns = [
     path("admin/", admin_site.urls),

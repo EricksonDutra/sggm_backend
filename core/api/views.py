@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db.models import Prefetch
 from django.utils.timezone import now
-from rest_framework import status, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -10,10 +10,11 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core.api.permissions import IsLiderOrReadOnly, IsMusicoOwnerOrLider
-from core.models import Escala, Evento, Instrumento, Musica, Musico
+from core.models import Artista, Escala, Evento, Instrumento, Musica, Musico
 from core.services import NotificationService
 
 from .serializers import (
+    ArtistaSerializer,
     EscalaSerializer,
     EventoSerializer,
     InstrumentoSerializer,
@@ -660,3 +661,26 @@ class InstrumentoViewSet(viewsets.ModelViewSet):
     search_fields = ["nome", "categoria"]
     ordering_fields = ["nome", "categoria"]
     ordering = ["nome"]
+
+
+class ArtistaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gerenciar artistas/bandas musicais.
+    """
+
+    queryset = Artista.objects.all().order_by("nome")
+    serializer_class = ArtistaSerializer
+    permission_classes = [IsAuthenticated, IsLiderOrReadOnly]
+    search_fields = ["nome"]
+    ordering_fields = ["nome", "criado_em"]
+    ordering = ["nome"]
+
+    def get_queryset(self):
+        """Filtro opcional por nome para busca em tempo real"""
+        queryset = super().get_queryset()
+        nome = self.request.query_params.get("nome", None)
+
+        if nome:
+            queryset = queryset.filter(nome__icontains=nome)
+
+        return queryset
