@@ -4,6 +4,7 @@ from django.utils.timezone import now
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -460,6 +461,9 @@ class EscalaViewSet(MusicoPermissionMixin, viewsets.ModelViewSet):
                 print(f"⚠️ Músico {escala.musico.nome} não possui FCM token cadastrado")
 
             return response
+
+        except DRFValidationError:
+            raise
 
         except ValidationError as e:
             print(f"❌ Erro de validação: {e}")
