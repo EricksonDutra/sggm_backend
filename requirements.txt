@@ -61,7 +61,7 @@ pure-eval==0.2.2
 pyasn1==0.6.2
 pyasn1_modules==0.4.2
 pycparser==3.0
-Pygments==2.13.0
+Pygments==2.15.0
 PyJWT==2.11.0
 pyodbc==5.2.0
 pytest==9.0.2
