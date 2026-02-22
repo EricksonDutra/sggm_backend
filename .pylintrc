@@ -1,1 +1,21 @@
-pylint --generate-rcfile > .pylintrc
+[MASTER]
+load-plugins=pylint_django
+django-settings-module=SGGM.settings_test
+ignore=migrations
+
+[MESSAGES CONTROL]
+disable=
+    C0114,
+    C0115,
+    C0116,
+    E5142,
+    C0301,
+    C0103,
+    W0212
+
+[FORMAT]
+max-line-length=120
+
+[DESIGN]
+max-locals=30
+max-statements=60
