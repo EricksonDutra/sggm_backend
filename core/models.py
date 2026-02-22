@@ -220,6 +220,13 @@ class Escala(models.Model):
         "Instrumento", on_delete=models.SET_NULL, null=True, blank=True
     )
 
+    data_hora_ensaio = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Data e Hora do Ensaio",
+        help_text="Data e hora do ensaio para este evento (opcional)",
+    )
+
     observacao = models.CharField(max_length=255, blank=True)
 
     confirmado = models.BooleanField(default=False)
@@ -244,6 +251,12 @@ class Escala(models.Model):
             )
             if afastamentos.exists():
                 raise ValidationError("Músico está afastado neste período")
+
+        if self.data_hora_ensaio and self.evento:
+            if self.data_hora_ensaio > self.evento.data_evento:
+                raise ValidationError(
+                    "A data/hora do ensaio não pode ser posterior à data do evento."
+                )
 
     def save(self, *args, **kwargs):
         # ✅ Chamar clean() antes de salvar

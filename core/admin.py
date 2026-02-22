@@ -105,7 +105,13 @@ class EscalaInline(admin.TabularInline):
     extra = 1
     autocomplete_fields = ("musico",)
     show_change_link = True
-    fields = ("musico", "instrumento_no_evento", "confirmado", "observacao")
+    fields = (
+        "musico",
+        "instrumento_no_evento",
+        "confirmado",
+        "observacao",
+        "data_hora_ensaio",
+    )
 
 
 # =====================================================
@@ -190,7 +196,13 @@ class EventoAdmin(admin.ModelAdmin):
 # ESCALA
 # =====================================================
 class EscalaAdmin(admin.ModelAdmin):
-    list_display = ("musico", "evento", "instrumento_no_evento", "confirmado")
+    list_display = (
+        "musico",
+        "evento",
+        "instrumento_no_evento",
+        "confirmado",
+        "data_hora_ensaio",
+    )
     list_filter = ("confirmado", "evento__data_evento", "instrumento_no_evento")
     search_fields = ("musico__nome", "evento__nome")
     ordering = ("-evento__data_evento",)
@@ -208,7 +220,12 @@ class EscalaAdmin(admin.ModelAdmin):
         (
             "Detalhes da Escala",
             {
-                "fields": ("instrumento_no_evento", "observacao", "confirmado"),
+                "fields": (
+                    "instrumento_no_evento",
+                    "observacao",
+                    "confirmado",
+                    "data_hora_ensaio",
+                ),
             },
         ),
         (
