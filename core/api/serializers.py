@@ -1,5 +1,5 @@
 from django.contrib.auth.models import (
-    User,  # ❌ CORRIGIDO: estava importando de gunicorn.config
+    User,
 )
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -68,7 +68,7 @@ class MusicoSerializer(serializers.ModelSerializer):
 
 class MusicoCreateSerializer(serializers.ModelSerializer):
     """
-    ✅ CORRIGIDO: Serializer para criação de músico
+    Serializer para criação de músico
     Gera username e senha automaticamente baseado no email
     """
 
@@ -314,6 +314,7 @@ class EscalaSerializer(serializers.ModelSerializer):
             "instrumento_nome",
             "observacao",
             "confirmado",
+            "data_hora_ensaio",
             "criado_em",
         ]
         read_only_fields = ["id", "criado_em"]
@@ -341,6 +342,13 @@ class EscalaSerializer(serializers.ModelSerializer):
                     f"O músico {musico.nome} já está escalado para este evento."
                 )
 
+        data_hora_ensaio = data.get("data_hora_ensaio")
+        if data_hora_ensaio and evento:
+            if data_hora_ensaio > evento.data_evento:
+                raise serializers.ValidationError(
+                    "A data/hora do ensaio não pode ser posterior à data do evento."
+                )
+
         return data
 
 
@@ -362,13 +370,12 @@ class EscalaCreateSerializer(serializers.ModelSerializer):
             "instrumento_no_evento_nome",
             "observacao",
             "confirmado",
+            "data_hora_ensaio",
         ]
 
     def create(self, validated_data):
-        # Extrair nome do instrumento
         nome_instr = validated_data.pop("instrumento_no_evento_nome", None)
 
-        # Buscar ou criar instrumento
         instrumento = None
         if nome_instr and nome_instr.strip():
             instrumento, created = Instrumento.objects.get_or_create(

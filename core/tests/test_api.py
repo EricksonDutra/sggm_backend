@@ -106,6 +106,89 @@ class EscalaAPITest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_criar_escala_com_data_hora_ensaio(self):
+        """POST com data_hora_ensaio deve retornar 201."""
+        from datetime import timedelta
+
+        url = reverse("escala-list")
+        evento_futuro = Evento.objects.create(
+            nome="Culto Futuro",
+            data_evento=timezone.now() + timezone.timedelta(days=10),
+            local="Igreja",
+        )
+        data_ensaio = (timezone.now() + timedelta(days=2)).isoformat()
+        data = {
+            "musico": self.musico.id,
+            "evento": evento_futuro.id,
+            "data_hora_ensaio": data_ensaio,
+        }
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("data_hora_ensaio", response.data)
+
+    def test_criar_escala_sem_data_hora_ensaio(self):
+        """POST sem data_hora_ensaio deve retornar 201 (campo opcional)."""
+        url = reverse("escala-list")
+        data = {"musico": self.musico.id, "evento": self.evento.id}
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_atualizar_data_hora_ensaio_via_patch(self):
+        """PATCH com data_hora_ensaio deve atualizar corretamente."""
+        from datetime import timedelta
+
+        evento_futuro = Evento.objects.create(
+            nome="Culto Patch",
+            data_evento=timezone.now() + timezone.timedelta(days=10),
+            local="Igreja",
+        )
+
+        escala = Escala.objects.create(musico=self.musico, evento=evento_futuro)
+        url = reverse("escala-detail", args=[escala.id])
+        nova_data = (timezone.now() + timedelta(days=3)).isoformat()
+        response = self.client.patch(
+            url, {"data_hora_ensaio": nova_data}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        escala.refresh_from_db()
+        self.assertIsNotNone(escala.data_hora_ensaio)
+
+    def test_data_hora_ensaio_aparece_no_get_escala(self):
+        """GET na escala deve retornar o campo data_hora_ensaio."""
+        from datetime import timedelta
+
+        evento_futuro = Evento.objects.create(
+            nome="Culto Get",
+            data_evento=timezone.now() + timezone.timedelta(days=10),
+            local="Igreja",
+        )
+
+        data_ensaio = timezone.now() + timedelta(days=2)
+        escala = Escala.objects.create(
+            musico=self.musico,
+            evento=evento_futuro,
+            data_hora_ensaio=data_ensaio,
+        )
+        url = reverse("escala-detail", args=[escala.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("data_hora_ensaio", response.data)
+        self.assertIsNotNone(response.data["data_hora_ensaio"])
+
+    def test_data_hora_ensaio_posterior_ao_evento_retorna_400(self):
+        """POST com ensaio após o evento deve retornar 400."""
+        from datetime import timedelta
+
+        url = reverse("escala-list")
+        data_invalida = (self.evento.data_evento + timedelta(days=1)).isoformat()
+        data = {
+            "musico": self.musico.id,
+            "evento": self.evento.id,
+            "data_hora_ensaio": data_invalida,
+        }
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class EventoAPITest(APITestCase):
     def setUp(self):

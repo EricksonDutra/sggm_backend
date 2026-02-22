@@ -461,3 +461,27 @@ class EscalaModelTest(TestCase):
         escala2 = Escala.objects.create(musico=self.musico, evento=evento2)
 
         self.assertEqual(self.musico.escalas.count(), 2)
+
+    def test_escala_sem_data_hora_ensaio_e_valida(self):
+        """Campo data_hora_ensaio é opcional - não deve lançar erro."""
+        escala = Escala.objects.create(musico=self.musico, evento=self.evento)
+        self.assertIsNone(escala.data_hora_ensaio)
+
+    def test_escala_com_data_hora_ensaio_validda(self):
+        """Campo data_hora_ensaio preenchido corretamente deve ser salvo."""
+        data_hora_ensaio = timezone.now() + timedelta(days=5)
+        escala = Escala.objects.create(
+            musico=self.musico, evento=self.evento, data_hora_ensaio=data_hora_ensaio
+        )
+        escala.refresh_from_db()
+        self.assertEqual(escala.data_hora_ensaio, data_hora_ensaio)
+
+    def test_escala_data_hora_ensaio_nao_pode_ser_posterior_ao_evento(self):
+        """Ensaio não pode ser marcado DEPOIS do evento."""
+        data_ensaio_invalida = self.evento.data_evento + timedelta(days=1)
+        with self.assertRaises(ValidationError):
+            Escala.objects.create(
+                musico=self.musico,
+                evento=self.evento,
+                data_hora_ensaio=data_ensaio_invalida,
+            )
