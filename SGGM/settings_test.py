@@ -1,27 +1,81 @@
-# ruff: noqa: F403, F401
+"""
+Configurações totalmente independentes para CI e testes locais.
+NÃO herda de base.py para evitar dependência de variáveis de ambiente.
+"""
 
-"""
-Configurações otimizadas para execução de testes.
-Ultra rápido com SQLite em memória.
-"""
 import tempfile
 from datetime import timedelta
+from pathlib import Path
 
-from .settings.base import *  # Importar tudo do base
-
-# ==============================================================================
-# DEBUG
-# ==============================================================================
-DEBUG = False
-ALLOWED_HOSTS = ["*"]
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ==============================================================================
-# SECRET KEY
+# CORE
 # ==============================================================================
 SECRET_KEY = "test-secret-key-insegura-apenas-para-testes"
+DEBUG = False
+ALLOWED_HOSTS = ["*"]
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+ROOT_URLCONF = "SGGM.urls"
+WSGI_APPLICATION = "SGGM.wsgi.application"
 
 # ==============================================================================
-# DATABASE - SQLite em memória (ultra rápido)
+# FIREBASE — desabilitado em testes
+# ==============================================================================
+FIREBASE_CONFIG = None
+
+# ==============================================================================
+# APPS
+# ==============================================================================
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "corsheaders",
+    "django_filters",
+    "core.apps.CoreConfig",
+]
+
+# ==============================================================================
+# MIDDLEWARE
+# ==============================================================================
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+# ==============================================================================
+# TEMPLATES
+# ==============================================================================
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+# ==============================================================================
+# DATABASE — SQLite em memória (sem dependências externas)
 # ==============================================================================
 DATABASES = {
     "default": {
@@ -31,13 +85,27 @@ DATABASES = {
 }
 
 # ==============================================================================
-# DJANGO REST FRAMEWORK - SEM autenticação em testes
-# ATENÇÃO: Sobrescrever COMPLETAMENTE a configuração do base.py
+# INTERNATIONALIZATION
+# ==============================================================================
+LANGUAGE_CODE = "pt-br"
+TIME_ZONE = "America/Sao_Paulo"
+USE_I18N = True
+USE_TZ = False
+
+# ==============================================================================
+# STATIC / MEDIA
+# ==============================================================================
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_ROOT = tempfile.mkdtemp()
+
+# ==============================================================================
+# REST FRAMEWORK — sem autenticação nos testes
 # ==============================================================================
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [],  # ✅ Lista vazia = sem autenticação
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",  # ✅ Permitir tudo
+        "rest_framework.permissions.AllowAny",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 100,
@@ -52,7 +120,7 @@ REST_FRAMEWORK = {
 }
 
 # ==============================================================================
-# SIMPLE JWT - Desabilitado em testes (não precisa)
+# SIMPLE JWT
 # ==============================================================================
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
@@ -60,24 +128,20 @@ SIMPLE_JWT = {
 }
 
 # ==============================================================================
-# PASSWORD HASHER - Simplificado para velocidade
+# PASSWORD — simplificado para velocidade
 # ==============================================================================
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.MD5PasswordHasher",
 ]
-
-# ==============================================================================
-# PASSWORD VALIDATORS - Desabilitado para testes
-# ==============================================================================
 AUTH_PASSWORD_VALIDATORS = []
 
 # ==============================================================================
-# EMAIL - Backend em memória
+# EMAIL
 # ==============================================================================
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 # ==============================================================================
-# CACHE - Em memória local
+# CACHE
 # ==============================================================================
 CACHES = {
     "default": {
@@ -87,12 +151,7 @@ CACHES = {
 }
 
 # ==============================================================================
-# MEDIA FILES - Diretório temporário
-# ==============================================================================
-MEDIA_ROOT = tempfile.mkdtemp()
-
-# ==============================================================================
-# STORAGE - Sistema de arquivos padrão
+# STORAGE
 # ==============================================================================
 STORAGES = {
     "default": {
@@ -104,49 +163,31 @@ STORAGES = {
 }
 
 # ==============================================================================
-# CORS - Permissivo para testes
+# CORS
 # ==============================================================================
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:8080",
-    "http://127.0.0.1:8000",
-]
-CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 # ==============================================================================
-# SECURITY - Desabilitado para testes
+# SECURITY
 # ==============================================================================
-CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
 # ==============================================================================
-# CELERY - Execução síncrona
-# ==============================================================================
-CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_EAGER_PROPAGATES = True
-
-# ==============================================================================
-# LOGGING - Silencioso nos testes
+# LOGGING — silencioso
 # ==============================================================================
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": True,
-    "handlers": {
-        "null": {
-            "class": "logging.NullHandler",
-        },
-    },
-    "root": {
-        "handlers": ["null"],
-    },
+    "handlers": {"null": {"class": "logging.NullHandler"}},
+    "root": {"handlers": ["null"]},
 }
 
 
 # ==============================================================================
-# MIGRATIONS - Desabilitadas para velocidade máxima
+# MIGRATIONS — desabilitadas para velocidade máxima
 # ==============================================================================
 class DisableMigrations:
     def __contains__(self, item):
