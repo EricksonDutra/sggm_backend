@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
@@ -28,16 +28,14 @@ class MusicoModelTest(TestCase):
             instrumento_principal=self.instrumento,
             status="ATIVO",
         )
-
         self.assertEqual(musico.nome, "Erickson")
         self.assertEqual(musico.email, "erickson@email.com")
         self.assertEqual(musico.status, "ATIVO")
-        self.assertEqual(musico.tipo_usuario, "MUSICO")  # Default
+        self.assertEqual(musico.tipo_usuario, "MUSICO")
 
     def test_musico_com_valores_default(self):
         """Testa valores padrão do modelo."""
         musico = Musico.objects.create(user=self.user, nome="Teste")
-
         self.assertEqual(musico.status, "ATIVO")
         self.assertEqual(musico.tipo_usuario, "MUSICO")
         self.assertEqual(musico.role, "MUSICO")
@@ -56,7 +54,6 @@ class MusicoModelTest(TestCase):
     def test_nao_permite_user_duplicado(self):
         """Testa que não permite dois músicos com mesmo usuário."""
         Musico.objects.create(user=self.user, nome="Primeiro")
-
         with self.assertRaises(ValidationError):
             Musico.objects.create(user=self.user, nome="Segundo")
 
@@ -159,21 +156,19 @@ class MusicoModelTest(TestCase):
 
     def test_sincronizar_grupo_musico(self):
         """Testa sincronização de grupo para músico."""
-        musico = Musico.objects.create(
-            user=self.user, nome="Músico", tipo_usuario="MUSICO"
-        )
+        Musico.objects.create(user=self.user, nome="Músico", tipo_usuario="MUSICO")
         self.assertTrue(self.user.groups.filter(name="Músicos").exists())
 
     def test_sincronizar_grupo_lider(self):
         """Testa sincronização de grupo para líder."""
         user2 = User.objects.create_user(username="lider", password="123")
-        musico = Musico.objects.create(user=user2, nome="Líder", tipo_usuario="LIDER")
+        Musico.objects.create(user=user2, nome="Líder", tipo_usuario="LIDER")
         self.assertTrue(user2.groups.filter(name="Lideres").exists())
 
     def test_sincronizar_grupo_admin(self):
         """Testa sincronização de grupo para admin."""
         user3 = User.objects.create_user(username="admin", password="123")
-        musico = Musico.objects.create(user=user3, nome="Admin", tipo_usuario="ADMIN")
+        Musico.objects.create(user=user3, nome="Admin", tipo_usuario="ADMIN")
         self.assertTrue(user3.groups.filter(name="Administradores").exists())
         user3.refresh_from_db()
         self.assertTrue(user3.is_staff)
@@ -268,7 +263,7 @@ class MusicaModelTest(TestCase):
     def test_nao_permite_deletar_artista_com_musicas(self):
         """Testa PROTECT em artista com músicas."""
         Musica.objects.create(titulo="Test", artista=self.artista)
-        with self.assertRaises(Exception):  # ProtectedError
+        with self.assertRaises(Exception):
             self.artista.delete()
 
     def test_str_retorna_titulo_artista(self):
@@ -312,9 +307,7 @@ class EventoModelTest(TestCase):
         artista = Artista.objects.create(nome="Artista")
         musica1 = Musica.objects.create(titulo="Música 1", artista=artista)
         musica2 = Musica.objects.create(titulo="Música 2", artista=artista)
-
         evento.repertorio.add(musica1, musica2)
-
         self.assertEqual(evento.repertorio.count(), 2)
         self.assertIn(musica1, evento.repertorio.all())
         self.assertIn(musica2, evento.repertorio.all())
@@ -325,22 +318,47 @@ class EventoModelTest(TestCase):
 
         from django.conf import settings
 
-        # Criar data compatível com USE_TZ True ou False
         if settings.USE_TZ:
-            # Se USE_TZ estiver ativo, usar timezone aware
             data = timezone.make_aware(datetime(2026, 3, 15, 19, 0))
         else:
-            # Se USE_TZ estiver desativado, usar datetime naive
             data = datetime(2026, 3, 15, 19, 0)
 
         evento = Evento.objects.create(
             nome="Culto Especial", data_evento=data, local="Igreja"
         )
-
-        # Verificar que __str__ contém nome e data formatada
         resultado = str(evento)
         self.assertIn("Culto Especial", resultado)
         self.assertIn("15/03/2026", resultado)
+
+    def test_evento_com_data_hora_ensaio_valida(self):
+        """Ensaio antes do evento deve ser aceito."""
+        evento = Evento.objects.create(
+            nome="Culto",
+            data_evento=self.data_evento,
+            local="Igreja",
+            data_hora_ensaio=self.data_evento - timedelta(days=1),
+        )
+        self.assertIsNotNone(evento.data_hora_ensaio)
+
+    def test_evento_sem_data_hora_ensaio_e_valido(self):
+        """Campo data_hora_ensaio é opcional."""
+        evento = Evento.objects.create(
+            nome="Culto",
+            data_evento=self.data_evento,
+            local="Igreja",
+        )
+        self.assertIsNone(evento.data_hora_ensaio)
+
+    def test_evento_data_hora_ensaio_nao_pode_ser_posterior_ao_evento(self):
+        """Ensaio não pode ser marcado DEPOIS do evento."""
+        with self.assertRaises(ValidationError):
+            evento = Evento(
+                nome="Culto",
+                data_evento=self.data_evento,
+                local="Igreja",
+                data_hora_ensaio=self.data_evento + timedelta(days=1),
+            )
+            evento.full_clean()
 
 
 class EscalaModelTest(TestCase):
@@ -375,7 +393,7 @@ class EscalaModelTest(TestCase):
         )
         self.assertEqual(escala.musico, self.musico)
         self.assertEqual(escala.evento, self.evento)
-        self.assertFalse(escala.confirmado)  # Default False
+        self.assertFalse(escala.confirmado)
 
     def test_nao_permite_duplicidade_na_escala(self):
         """Testa unique_together musico-evento."""
@@ -387,7 +405,6 @@ class EscalaModelTest(TestCase):
         """Testa validação de status inativo."""
         self.musico.status = "INATIVO"
         self.musico.save()
-
         with self.assertRaises(ValidationError):
             Escala.objects.create(musico=self.musico, evento=self.evento)
 
@@ -395,7 +412,6 @@ class EscalaModelTest(TestCase):
         """Testa criação com músico ativo."""
         self.musico.status = "ATIVO"
         self.musico.save()
-
         escala = Escala.objects.create(musico=self.musico, evento=self.evento)
         self.assertIsNotNone(escala)
 
@@ -415,17 +431,13 @@ class EscalaModelTest(TestCase):
     def test_cascata_delete_evento(self):
         """Testa CASCADE na deleção de evento."""
         escala = Escala.objects.create(musico=self.musico, evento=self.evento)
-        evento_id = self.evento.id
-
         self.evento.delete()
-
         self.assertFalse(Escala.objects.filter(id=escala.id).exists())
 
     def test_protect_delete_musico(self):
         """Testa PROTECT na deleção de músico."""
         Escala.objects.create(musico=self.musico, evento=self.evento)
-
-        with self.assertRaises(Exception):  # ProtectedError
+        with self.assertRaises(Exception):
             self.musico.delete()
 
     def test_str_retorna_musico_evento(self):
@@ -443,10 +455,8 @@ class EscalaModelTest(TestCase):
             status="ATIVO",
             instrumento_principal=self.instrumento,
         )
-
-        escala1 = Escala.objects.create(musico=self.musico, evento=self.evento)
-        escala2 = Escala.objects.create(musico=musico2, evento=self.evento)
-
+        Escala.objects.create(musico=self.musico, evento=self.evento)
+        Escala.objects.create(musico=musico2, evento=self.evento)
         self.assertEqual(self.evento.escalas.count(), 2)
 
     def test_multiple_escalas_mesmo_musico(self):
@@ -456,32 +466,6 @@ class EscalaModelTest(TestCase):
             data_evento=timezone.now() + timedelta(days=3),
             local="Igreja",
         )
-
-        escala1 = Escala.objects.create(musico=self.musico, evento=self.evento)
-        escala2 = Escala.objects.create(musico=self.musico, evento=evento2)
-
+        Escala.objects.create(musico=self.musico, evento=self.evento)
+        Escala.objects.create(musico=self.musico, evento=evento2)
         self.assertEqual(self.musico.escalas.count(), 2)
-
-    def test_escala_sem_data_hora_ensaio_e_valida(self):
-        """Campo data_hora_ensaio é opcional - não deve lançar erro."""
-        escala = Escala.objects.create(musico=self.musico, evento=self.evento)
-        self.assertIsNone(escala.data_hora_ensaio)
-
-    def test_escala_com_data_hora_ensaio_validda(self):
-        """Campo data_hora_ensaio preenchido corretamente deve ser salvo."""
-        data_hora_ensaio = timezone.now() + timedelta(days=5)
-        escala = Escala.objects.create(
-            musico=self.musico, evento=self.evento, data_hora_ensaio=data_hora_ensaio
-        )
-        escala.refresh_from_db()
-        self.assertEqual(escala.data_hora_ensaio, data_hora_ensaio)
-
-    def test_escala_data_hora_ensaio_nao_pode_ser_posterior_ao_evento(self):
-        """Ensaio não pode ser marcado DEPOIS do evento."""
-        data_ensaio_invalida = self.evento.data_evento + timedelta(days=1)
-        with self.assertRaises(ValidationError):
-            Escala.objects.create(
-                musico=self.musico,
-                evento=self.evento,
-                data_hora_ensaio=data_ensaio_invalida,
-            )
