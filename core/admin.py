@@ -110,7 +110,6 @@ class EscalaInline(admin.TabularInline):
         "instrumento_no_evento",
         "confirmado",
         "observacao",
-        "data_hora_ensaio",
     )
 
 
@@ -132,6 +131,12 @@ class EventoAdmin(admin.ModelAdmin):
             "Informações Principais",
             {
                 "fields": ("nome", "tipo", "data_evento", "local"),
+            },
+        ),
+        (
+            "Ensaio",
+            {
+                "fields": ("data_hora_ensaio",),
             },
         ),
         (
@@ -201,7 +206,6 @@ class EscalaAdmin(admin.ModelAdmin):
         "evento",
         "instrumento_no_evento",
         "confirmado",
-        "data_hora_ensaio",
     )
     list_filter = ("confirmado", "evento__data_evento", "instrumento_no_evento")
     search_fields = ("musico__nome", "evento__nome")
@@ -224,7 +228,6 @@ class EscalaAdmin(admin.ModelAdmin):
                     "instrumento_no_evento",
                     "observacao",
                     "confirmado",
-                    "data_hora_ensaio",
                 ),
             },
         ),

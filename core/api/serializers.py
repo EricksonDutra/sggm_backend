@@ -314,7 +314,6 @@ class EscalaSerializer(serializers.ModelSerializer):
             "instrumento_nome",
             "observacao",
             "confirmado",
-            "data_hora_ensaio",
             "criado_em",
         ]
         read_only_fields = ["id", "criado_em"]
@@ -342,13 +341,6 @@ class EscalaSerializer(serializers.ModelSerializer):
                     f"O músico {musico.nome} já está escalado para este evento."
                 )
 
-        data_hora_ensaio = data.get("data_hora_ensaio")
-        if data_hora_ensaio and evento:
-            if data_hora_ensaio > evento.data_evento:
-                raise serializers.ValidationError(
-                    "A data/hora do ensaio não pode ser posterior à data do evento."
-                )
-
         return data
 
 
@@ -370,7 +362,6 @@ class EscalaCreateSerializer(serializers.ModelSerializer):
             "instrumento_no_evento_nome",
             "observacao",
             "confirmado",
-            "data_hora_ensaio",
         ]
 
     def create(self, validated_data):
@@ -414,6 +405,22 @@ class EventoSerializer(serializers.ModelSerializer):
         source="repertorio.count", read_only=True, required=False
     )
 
+    def validate(self, data):
+        data_hora_ensaio = data.get("data_hora_ensaio")
+        data_evento = data.get("data_evento") or (
+            self.instance.data_evento if self.instance else None
+        )
+
+        if data_hora_ensaio and data_evento:
+            if data_hora_ensaio > data_evento:
+                raise serializers.ValidationError(
+                    {
+                        "data_hora_ensaio": "A data/hora do ensaio não pode ser posterior à data do evento."
+                    }
+                )
+
+        return data
+
     class Meta:
         model = Evento
         fields = [
@@ -422,6 +429,7 @@ class EventoSerializer(serializers.ModelSerializer):
             "tipo",
             "tipo_display",
             "data_evento",
+            "data_hora_ensaio",
             "local",
             "descricao",
             "repertorio",
