@@ -10,12 +10,22 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from core.api.permissions import IsLiderOrReadOnly, IsMusicoOwnerOrLider
-from core.models import Artista, Escala, Evento, Instrumento, Musica, Musico
+from core.api.permissions import IsAutorOuLider, IsLiderOrReadOnly, IsMusicoOwnerOrLider
+from core.models import (
+    Artista,
+    ComentarioPerformance,
+    Escala,
+    Evento,
+    Instrumento,
+    Musica,
+    Musico,
+    ReacaoComentario,
+)
 from core.services import NotificationService
 
 from .serializers import (
     ArtistaSerializer,
+    ComentarioPerformanceSerializer,
     EscalaSerializer,
     EventoSerializer,
     InstrumentoSerializer,
@@ -688,3 +698,78 @@ class ArtistaViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(nome__icontains=nome)
 
         return queryset
+
+
+# =====================================================
+# COMENTARIOS DE PERFORMANCE
+# =====================================================
+
+
+class ComentarioPerformanceViewSet(MusicoPermissionMixin, viewsets.ModelViewSet):
+    """
+    ViewSet para comentários/feedbacks de performance por evento e música.
+    """
+
+    queryset = (
+        ComentarioPerformance.objects.select_related("evento", "musica", "autor")
+        .prefetch_related("reacoes")
+        .all()
+    )
+
+    serializer_class = ComentarioPerformanceSerializer
+    permission_classes = [IsAuthenticated, IsAutorOuLider]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filtros opcionais via query params
+        evento_id = self.request.query_params.get("evento")
+        musica_id = self.request.query_params.get("musica")
+
+        if evento_id:
+            queryset = queryset.filter(evento_id=evento_id)
+        if musica_id:
+            queryset = queryset.filter(musica_id=musica_id)
+
+        return queryset
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def reagir(self, request, pk=None):
+        """
+        Toggle de curtida 👍 no comentário.
+        POST /api/comentarios/{id}/reagir/
+        """
+        comentario = self.get_object()
+        musico = self.get_musico_or_403(request)
+
+        reacao, criada = ReacaoComentario.objects.get_or_create(
+            comentario=comentario,
+            musico=musico,
+        )
+
+        if not criada:
+            reacao.delete()
+            total = ReacaoComentario.objects.filter(comentario=comentario).count()
+
+            return Response(
+                {
+                    "status": "removida",
+                    "total_reacoes": total,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        total = ReacaoComentario.objects.filter(comentario=comentario).count()
+
+        return Response(
+            {
+                "status": "adicionada",
+                "total_reacoes": total,
+            },
+            status=status.HTTP_201_CREATED,
+        )

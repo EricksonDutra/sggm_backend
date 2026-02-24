@@ -238,3 +238,42 @@ class CanEditOwnFields(permissions.BasePermission):
                 return False
 
         return True
+
+
+class IsAutorOuLider(permissions.BasePermission):
+    """
+    - Criar: qualquer músico autenticado
+    - Editar: somente o autor (dentro de 24h) ou líder (sem limite)
+    - Deletar: somente o autor ou líder
+    """
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and hasattr(request.user, "musico")
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        if request.user.is_superuser:
+            return True
+
+        if not hasattr(request.user, "musico"):
+            return False
+
+        musico = request.user.musico
+
+        if musico.is_lider():
+            return True
+
+        if obj.autor != musico:
+            return False
+
+        # Bloquear edição (não deleção) após 24h
+        if request.method in ["PUT", "PATCH"]:
+            from django.utils import timezone
+
+            delta = timezone.now() - obj.criado_em
+            if delta.total_seconds() > 86400:
+                return False
+
+        return True

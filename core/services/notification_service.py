@@ -92,3 +92,37 @@ class NotificationService:
 
             traceback.print_exc()
             return False
+
+
+@staticmethod
+def enviar_notificacao_feedback(musico, comentario):
+    """Envia notificação push para escalados quando feedback é postado."""
+    if not NotificationService._ensure_firebase_initialized():
+        return False
+
+    if not musico.fcm_token:
+        return False
+
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=f"💬 Novo feedback — {comentario.evento.nome}",
+                body=(
+                    f"{comentario.autor.nome} comentou sobre "
+                    f"'{comentario.musica.titulo}'"
+                ),
+            ),
+            data={
+                "tipo": "novo_feedback",
+                "comentario_id": str(comentario.id),
+                "evento_id": str(comentario.evento.id),
+                "musica_id": str(comentario.musica.id),
+            },
+            token=musico.fcm_token,
+        )
+        response = messaging.send(message)
+        print(f"✅ Notificação feedback enviada para {musico.nome}: {response}")
+        return True
+    except Exception as e:
+        print(f"❌ Erro ao enviar feedback notification: {e}")
+        return False

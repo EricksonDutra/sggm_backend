@@ -317,3 +317,71 @@ class Artista(models.Model):
         """Remove espaços extras e padroniza o nome"""
         if self.nome:
             self.nome = self.nome.strip()
+
+
+class ComentarioPerformance(models.Model):
+    evento = models.ForeignKey(
+        Evento,
+        on_delete=models.CASCADE,
+        related_name="comentarios_performance",
+    )
+    musica = models.ForeignKey(
+        Musica,
+        on_delete=models.CASCADE,
+        related_name="comentarios_performance",
+    )
+    autor = models.ForeignKey(
+        "Musico",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="comentarios_feitos",
+    )
+    texto = models.TextField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+    editado_em = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from django.utils import timezone
+
+        if self.evento_id and self.evento.data_evento > timezone.now():
+            raise ValidationError(
+                "Comentários só podem ser publicados após o início do evento."
+            )
+        if self.musica_id and self.evento_id:
+            if not self.evento.repertorio.filter(pk=self.musica_id).exists():
+                raise ValidationError(
+                    "Esta música não pertence ao repertório deste evento."
+                )
+
+    class Meta:
+        db_table = "comentarios_performance"
+        verbose_name = "Comentário de Performance"
+        verbose_name_plural = "Comentários de Performance"
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return f"{self.autor} sobre {self.musica} em {self.evento}"
+
+
+class ReacaoComentario(models.Model):
+    comentario = models.ForeignKey(
+        ComentarioPerformance,
+        on_delete=models.CASCADE,
+        related_name="reacoes",
+    )
+    musico = models.ForeignKey(
+        Musico,
+        on_delete=models.CASCADE,
+        related_name="reacoes_dadas",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "reacoes_comentario"
+        verbose_name = "Reação"
+        verbose_name_plural = "Reações"
+        unique_together = ["comentario", "musico"]
+
+    def __str__(self):
+        return f"{self.musico.nome} 👍 em comentário {self.comentario.id}"

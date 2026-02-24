@@ -529,3 +529,87 @@ class ArtistaSerializer(serializers.ModelSerializer):
         model = Artista
         fields = ["id", "nome", "total_musicas", "criado_em"]
         read_only_fields = ["criado_em"]
+
+
+# -------------------------
+# COMENTARIO DE PERFORMANCE
+# -------------------------
+from core.models import ComentarioPerformance, ReacaoComentario
+
+
+class ReacaoComentarioSerializer(serializers.ModelSerializer):
+    musico_nome = serializers.CharField(source="musico.nome", read_only=True)
+
+    class Meta:
+        model = ReacaoComentario
+        fields = ["id", "musico", "musico_nome", "criado_em"]
+        read_only_fields = ["id", "musico", "criado_em"]
+
+
+class ComentarioPerformanceSerializer(serializers.ModelSerializer):
+    autor_nome = serializers.CharField(source="autor.nome", read_only=True)
+    musica_titulo = serializers.CharField(source="musica.titulo", read_only=True)
+    evento_nome = serializers.CharField(source="evento.nome", read_only=True)
+    total_reacoes = serializers.IntegerField(source="reacoes.count", read_only=True)
+    eu_curto = serializers.SerializerMethodField()
+    pode_editar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ComentarioPerformance
+        fields = [
+            "id",
+            "evento",
+            "evento_nome",
+            "musica",
+            "musica_titulo",
+            "autor",
+            "autor_nome",
+            "texto",
+            "total_reacoes",
+            "eu_curto",
+            "pode_editar",
+            "criado_em",
+            "editado_em",
+        ]
+        read_only_fields = ["id", "autor", "criado_em", "editado_em"]
+
+    def get_eu_curto(self, obj):
+        request = self.context.get("request")
+        if request and hasattr(request.user, "musico"):
+            return obj.reacoes.filter(musico=request.user.musico).exists()
+        return False
+
+    def get_pode_editar(self, obj):
+        request = self.context.get("request")
+        if not request or not hasattr(request.user, "musico"):
+            return False
+        musico = request.user.musico
+        if musico.is_lider():
+            return True
+        if obj.autor != musico:
+            return False
+        from django.utils import timezone
+
+        return (timezone.now() - obj.criado_em).total_seconds() <= 86400
+
+    def validate(self, data):
+        from django.utils import timezone
+        from rest_framework.exceptions import ValidationError
+
+        evento = data.get("evento") or (self.instance.evento if self.instance else None)
+        musica = data.get("musica") or (self.instance.musica if self.instance else None)
+
+        if evento and evento.data_evento > timezone.now():
+            raise ValidationError(
+                "Comentários só podem ser publicados após o início do evento."
+            )
+        if evento and musica:
+            if not evento.repertorio.filter(pk=musica.pk).exists():
+                raise ValidationError(
+                    "Esta música não pertence ao repertório deste evento."
+                )
+        return data
+
+    def create(self, validated_data):
+        validated_data["autor"] = self.context["request"].user.musico
+        return super().create(validated_data)
