@@ -1,3 +1,4 @@
+import uuid
 from datetime import timedelta
 
 from django.contrib.auth.models import User
@@ -16,6 +17,8 @@ from core.models import (
     ReacaoComentario,
 )
 
+TEST_PASSWORD = str(uuid.uuid4())
+
 
 class ComentarioPerformanceAPITest(APITestCase):
     """Testes de endpoint para ComentarioPerformance."""
@@ -25,7 +28,7 @@ class ComentarioPerformanceAPITest(APITestCase):
 
         # Músico comum (autor)
         self.user_autor = User.objects.create_user(
-            username="autor", email="autor@test.com", password="pass123"
+            username="autor", email="autor@test.com", password=TEST_PASSWORD
         )
         self.musico_autor = Musico.objects.create(
             user=self.user_autor,
@@ -37,7 +40,7 @@ class ComentarioPerformanceAPITest(APITestCase):
 
         # Líder
         self.user_lider = User.objects.create_user(
-            username="lider", email="lider@test.com", password="pass123"
+            username="lider", email="lider@test.com", password=TEST_PASSWORD
         )
         self.lider = Musico.objects.create(
             user=self.user_lider,
@@ -49,7 +52,7 @@ class ComentarioPerformanceAPITest(APITestCase):
 
         # Terceiro músico (sem vínculo com o comentário)
         self.user_outro = User.objects.create_user(
-            username="outro", email="outro@test.com", password="pass123"
+            username="outro", email="outro@test.com", password=TEST_PASSWORD
         )
         self.outro = Musico.objects.create(
             user=self.user_outro,
