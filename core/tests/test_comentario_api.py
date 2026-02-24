@@ -9,7 +9,6 @@ from rest_framework.test import APITestCase
 from core.models import (
     Artista,
     ComentarioPerformance,
-    Escala,
     Evento,
     Instrumento,
     Musica,

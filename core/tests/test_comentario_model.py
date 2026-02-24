@@ -9,7 +9,6 @@ from django.utils import timezone
 from core.models import (
     Artista,
     ComentarioPerformance,
-    Escala,
     Evento,
     Instrumento,
     Musica,

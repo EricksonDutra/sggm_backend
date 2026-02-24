@@ -4,7 +4,16 @@ from django.contrib.auth.models import (
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from core.models import Artista, Escala, Evento, Instrumento, Musica, Musico
+from core.models import (
+    Artista,
+    ComentarioPerformance,
+    Escala,
+    Evento,
+    Instrumento,
+    Musica,
+    Musico,
+    ReacaoComentario,
+)
 
 
 # -------------------------
@@ -534,7 +543,6 @@ class ArtistaSerializer(serializers.ModelSerializer):
 # -------------------------
 # COMENTARIO DE PERFORMANCE
 # -------------------------
-from core.models import ComentarioPerformance, ReacaoComentario
 
 
 class ReacaoComentarioSerializer(serializers.ModelSerializer):

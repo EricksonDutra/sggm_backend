@@ -24,7 +24,7 @@ class NotificationService:
             BASE_DIR = Path(__file__).resolve().parent.parent.parent
             cred_path = BASE_DIR / "SGGM" / "serviceAccountKey.json"
 
-            print(f"\n🔥 Inicializando Firebase...")
+            print("\n🔥 Inicializando Firebase...")
             print(f"📂 {cred_path}")
 
             if not cred_path.exists():
@@ -57,7 +57,7 @@ class NotificationService:
             return False
 
         try:
-            print(f"\n📤 ENVIANDO NOTIFICAÇÃO")
+            print("\n📤 ENVIANDO NOTIFICAÇÃO")
             print(f"   Para: {musico.nome}")
             print(f"   Token: {musico.fcm_token[:30]}...")
             print(f"   Evento: {evento.nome}")

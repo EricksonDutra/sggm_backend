@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db.models import Prefetch
 from django.utils.timezone import now
-from rest_framework import filters, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError as DRFValidationError
