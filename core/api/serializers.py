@@ -619,5 +619,20 @@ class ComentarioPerformanceSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        validated_data["autor"] = self.context["request"].user.musico
+        request = self.context["request"]
+        validated_data["autor"] = request.user.musico
+
+        # ── Bloquear comentário se evento ainda não aconteceu ──
+        from django.utils.timezone import now
+
+        evento = validated_data.get("evento")
+        if evento and evento.data_evento > now():
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+
+            raise DRFValidationError(
+                detail={
+                    "detail": "Comentários só são permitidos após o evento ser realizado."
+                }
+            )
+
         return super().create(validated_data)
