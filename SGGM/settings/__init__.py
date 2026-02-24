@@ -6,7 +6,7 @@ ou DJANGO_ENV.
 import os
 
 # Detecta o ambiente
-ENVIRONMENT = os.environ.get("DJANGO_ENV", "development")
+ENVIRONMENT = os.environ.get("DJANGO_ENV", "production")
 
 if ENVIRONMENT == "production":
     from .production import *
