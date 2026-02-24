@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from ..views import logout_view
 from .views import (
     ArtistaViewSet,
+    ComentarioPerformanceViewSet,
     EscalaViewSet,
     EventoViewSet,
     InstrumentoViewSet,
@@ -18,7 +19,9 @@ router.register(r"eventos", EventoViewSet)
 router.register(r"escalas", EscalaViewSet)
 router.register(r"instrumentos", InstrumentoViewSet)
 router.register(r"artistas", ArtistaViewSet, basename="artista")
-
+router.register(
+    r"comentarios", ComentarioPerformanceViewSet, basename="comentarioperformance"
+)
 
 urlpatterns = [
     path("", include(router.urls)),
