@@ -262,6 +262,7 @@ class MusicaSerializer(serializers.ModelSerializer):
             "tom",
             "link_cifra",
             "link_youtube",
+            "conteudo_cifra",
             "total_eventos",
         ]
 

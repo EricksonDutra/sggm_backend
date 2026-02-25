@@ -94,6 +94,14 @@ class MusicaAdmin(admin.ModelAdmin):
                 "fields": ("titulo", "artista", "tom", "link_cifra", "link_youtube"),
             },
         ),
+        (
+            "Cifra Nativa (ChordPro)",
+            {
+                "fields": ("conteudo_cifra",),
+                "description": "Cole aqui o conteúdo da cifra no formato ChordPro. "
+                "Se preenchido, o app usará este conteúdo em vez do link externo.",
+            },
+        ),
     )
 
 
