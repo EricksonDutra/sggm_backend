@@ -171,6 +171,7 @@ class Musica(models.Model):
     tom = models.CharField(max_length=10, blank=True, null=True)
     link_cifra = models.URLField(max_length=200, blank=True, null=True)
     link_youtube = models.URLField(max_length=200, blank=True, null=True)
+    conteudo_cifra = models.TextField(blank=True, null=True)
 
     class Meta:
         db_table = "musicas"
