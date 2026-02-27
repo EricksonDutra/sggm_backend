@@ -209,20 +209,22 @@ class EventoAPITest(APITestCase):
         self.assertGreater(len(response.data), 0)
 
     def test_adicionar_repertorio_lista_vazia(self):
-        url = reverse("evento-adicionar-repertorio", args=[self.evento.id])
-        response = self.client.post(url, {"musicas": []}, format="json")
+        url = reverse("evento-atualizar-repertorio", args=[self.evento.id])
+        response = self.client.put(url, {"musicas": []}, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Lista vazia é válida — representa limpar o repertório do evento
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["total_musicas"], 0)
 
     def test_adicionar_repertorio_tipo_invalido(self):
-        url = reverse("evento-adicionar-repertorio", args=[self.evento.id])
-        response = self.client.post(url, {"musicas": "errado"}, format="json")
+        url = reverse("evento-atualizar-repertorio", args=[self.evento.id])
+        response = self.client.put(url, {"musicas": "errado"}, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_adicionar_repertorio_musica_inexistente(self):
-        url = reverse("evento-adicionar-repertorio", args=[self.evento.id])
-        response = self.client.post(url, {"musicas": [999]}, format="json")
+        url = reverse("evento-atualizar-repertorio", args=[self.evento.id])
+        response = self.client.put(url, {"musicas": [999]}, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -232,8 +234,8 @@ class EventoAPITest(APITestCase):
         artista = Artista.objects.create(nome="Teste Artista")
         musica = Musica.objects.create(titulo="Teste", artista=artista)
 
-        url = reverse("evento-adicionar-repertorio", args=[self.evento.id])
-        response = self.client.post(url, {"musicas": [musica.id]}, format="json")
+        url = reverse("evento-atualizar-repertorio", args=[self.evento.id])
+        response = self.client.put(url, {"musicas": [musica.id]}, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.evento.repertorio.count(), 1)

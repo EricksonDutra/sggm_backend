@@ -1,3 +1,4 @@
+from .compartilhamento_service import CompartilhamentoService
 from .gerenciador_escala import GerenciadorEscala
 from .notification_service import NotificationService
 
