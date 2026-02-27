@@ -22,6 +22,7 @@ from core.models import (
     ReacaoComentario,
 )
 from core.services import NotificationService
+from core.services.compartilhamento_service import CompartilhamentoService
 
 from .serializers import (
     ArtistaSerializer,
@@ -543,7 +544,6 @@ class EventoViewSet(MusicoPermissionMixin, viewsets.ModelViewSet):
     ViewSet para gerenciar eventos com otimizações agressivas.
     """
 
-    # ✅ CORRIGIDO: Apenas uma declaração de queryset
     queryset = Evento.objects.prefetch_related("repertorio").all()
 
     serializer_class = EventoSerializer
@@ -579,6 +579,18 @@ class EventoViewSet(MusicoPermissionMixin, viewsets.ModelViewSet):
         methods=["post"],
         permission_classes=[IsAuthenticated, IsLiderOrReadOnly],
     )
+    @action(detail=True, methods=["get"], url_path="compartilhar")
+    def compartilhar(self, request, pk=None):
+        """
+        GET /api/eventos/{id}/compartilhar/
+        Retorna o texto formatado da escala para compartilhamento (ex.: WhatsApp).
+        """
+        try:
+            texto = CompartilhamentoService.gerar_texto_escala(int(pk))
+            return Response({"texto": texto})
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=404)
+
     def adicionar_repertorio(self, request, pk=None):
         """
         Adicionar músicas ao repertório do evento.
@@ -634,6 +646,54 @@ class EventoViewSet(MusicoPermissionMixin, viewsets.ModelViewSet):
                 "evento_nome": evento.nome,
                 "total_musicas": evento.repertorio.count(),
                 "musicas_adicionadas": len(ids_encontrados),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(
+        detail=True,
+        methods=["put"],
+        permission_classes=[IsAuthenticated, IsLiderOrReadOnly],
+    )
+    def atualizar_repertorio(self, request, pk=None):
+        """
+        Substitui o repertório do evento pela lista enviada (replace completo).
+        PUT /api/eventos/{id}/atualizar_repertorio/
+        Body: { "musicas": [1, 2, 3] }
+        """
+        evento = self.get_object()
+        musica_ids = request.data.get("musicas", [])
+
+        if not isinstance(musica_ids, list):
+            return Response(
+                {"error": "O campo musicas deve ser uma lista de IDs"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Valida se todas as músicas existem
+        musicas_existentes = Musica.objects.filter(id__in=musica_ids).values_list(
+            "id", flat=True
+        )
+        ids_nao_encontrados = set(musica_ids) - set(musicas_existentes)
+
+        if ids_nao_encontrados:
+            return Response(
+                {
+                    "error": "Algumas músicas não foram encontradas",
+                    "musicas_nao_encontradas": sorted(list(ids_nao_encontrados)),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # set() substitui toda a M2M — remove as antigas e adiciona as novas
+        evento.repertorio.set(musica_ids)
+
+        return Response(
+            {
+                "status": "Repertório atualizado",
+                "evento_id": evento.id,
+                "evento_nome": evento.nome,
+                "total_musicas": evento.repertorio.count(),
             },
             status=status.HTTP_200_OK,
         )
