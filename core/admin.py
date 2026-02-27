@@ -115,7 +115,7 @@ class EscalaInline(admin.TabularInline):
     show_change_link = True
     fields = (
         "musico",
-        "instrumento_no_evento",
+        "instrumentos",
         "confirmado",
         "observacao",
     )
@@ -212,10 +212,10 @@ class EscalaAdmin(admin.ModelAdmin):
     list_display = (
         "musico",
         "evento",
-        "instrumento_no_evento",
+        "get_instrumentos",
         "confirmado",
     )
-    list_filter = ("confirmado", "evento__data_evento", "instrumento_no_evento")
+    list_filter = ("confirmado", "evento__data_evento", "instrumentos")
     search_fields = ("musico__nome", "evento__nome")
     ordering = ("-evento__data_evento",)
 
@@ -233,7 +233,7 @@ class EscalaAdmin(admin.ModelAdmin):
             "Detalhes da Escala",
             {
                 "fields": (
-                    "instrumento_no_evento",
+                    "instrumentos",
                     "observacao",
                     "confirmado",
                 ),
@@ -263,21 +263,33 @@ class EscalaAdmin(admin.ModelAdmin):
                 return True
         return False
 
+    def get_instrumentos(self, obj):
+        return " • ".join(i.nome for i in obj.instrumentos.all())
+
+    get_instrumentos.short_description = "Instrumentos"
+
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
         if not request.user.is_superuser and hasattr(request.user, "musico"):
             if request.user.musico.tipo_usuario == "MUSICO":
                 readonly.extend(
-                    ["musico", "evento", "instrumento_no_evento", "observacao"]
+                    [
+                        "musico",
+                        "evento",
+                        "instrumentos",
+                        "observacao",
+                    ]  # ← era instrumento_no_evento
                 )
         return readonly
 
     def get_queryset(self, request):
-        """Todos podem ver todas as escalas"""
         return (
             super()
             .get_queryset(request)
-            .select_related("musico", "evento", "instrumento_no_evento")
+            .select_related("musico", "evento")
+            .prefetch_related(
+                "instrumentos"
+            )  # ← era select_related instrumento_no_evento
         )
 
 
@@ -440,13 +452,15 @@ class CustomAdminSite(admin.AdminSite):
                         "proxima_escala": minhas_escalas.filter(
                             evento__data_evento__gte=hoje
                         )
-                        .select_related("evento", "instrumento_no_evento")
+                        .select_related("evento")
+                        .prefetch_related("instrumentos")
                         .order_by("evento__data_evento")
                         .first(),
                         "minhas_escalas_futuras": minhas_escalas.filter(
                             evento__data_evento__gte=hoje
                         )
-                        .select_related("evento", "instrumento_no_evento")
+                        .select_related("evento")
+                        .prefetch_related("instrumentos")
                         .order_by("evento__data_evento")[:5],
                     }
                 )

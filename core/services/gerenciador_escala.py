@@ -22,7 +22,7 @@ class GerenciadorEscala:
         - Não pode duplicar músico no mesmo evento
         - Não pode escalar músico inativo
         - Não pode escalar músico afastado no período
-        - Instrumento é opcional
+        - Instrumento é opcional (mas obrigatório na API via serializer)
         """
 
         evento = Evento.objects.filter(id=evento_id).first()
@@ -33,18 +33,16 @@ class GerenciadorEscala:
         if not musico:
             raise ValidationError("Músico não encontrado.")
 
-        # duplicidade
         if Escala.objects.filter(evento=evento, musico=musico).exists():
             raise ValidationError("Este músico já está escalado para este evento.")
 
-        # status músico
         if musico.status == "INATIVO":
             raise ValidationError("Não é possível escalar músico inativo.")
 
         if musico.esta_afastado():
             raise ValidationError("Músico está afastado no período.")
 
-        # instrumento opcional
+        # ── instrumento opcional no service, obrigatório na API ───
         instrumento_obj = None
         if instrumento_nome:
             instrumento_obj, _ = Instrumento.objects.get_or_create(
@@ -52,7 +50,11 @@ class GerenciadorEscala:
             )
 
         escala = Escala.objects.create(
-            evento=evento, musico=musico, instrumento_no_evento=instrumento_obj
+            evento=evento,
+            musico=musico,
         )
+
+        if instrumento_obj:  # ← era `instrumento` (NameError)
+            escala.instrumentos.set([instrumento_obj])
 
         return escala

@@ -337,9 +337,11 @@ class MusicoViewSet(MusicoPermissionMixin, viewsets.ModelViewSet):
         musico = self.get_object()
 
         # Otimização: select_related para evitar N+1 queries
-        escalas = musico.escalas.select_related(
-            "evento", "instrumento_no_evento"
-        ).order_by("-evento__data_evento")
+        escalas = (
+            musico.escalas.select_related("evento")
+            .prefetch_related("instrumentos")
+            .order_by("-evento__data_evento")
+        )
 
         # Filtros opcionais
         if request.query_params.get("futuras") == "true":
@@ -399,13 +401,16 @@ class EscalaViewSet(MusicoPermissionMixin, viewsets.ModelViewSet):
     """
 
     # ✅ Queryset como atributo de classe
-    queryset = Escala.objects.select_related(
-        "musico",
-        "musico__user",
-        "musico__instrumento_principal",
-        "evento",
-        "instrumento_no_evento",
-    ).all()
+    queryset = (
+        Escala.objects.select_related(
+            "musico",
+            "musico__user",
+            "musico__instrumento_principal",
+            "evento",
+        )
+        .prefetch_related("instrumentos")
+        .all()
+    )
 
     serializer_class = EscalaSerializer
     permission_classes = [IsAuthenticated, IsLiderOrReadOnly]
@@ -567,8 +572,9 @@ class EventoViewSet(MusicoPermissionMixin, viewsets.ModelViewSet):
                 "musico",
                 "musico__user",
                 "musico__instrumento_principal",
-                "instrumento_no_evento",
-            ),
+            ).prefetch_related(
+                "instrumentos"
+            ),  # ← M2M
         )
 
         # Aplicar prefetch adicional

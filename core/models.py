@@ -234,8 +234,11 @@ class Escala(models.Model):
     musico = models.ForeignKey(Musico, on_delete=models.PROTECT, related_name="escalas")
     evento = models.ForeignKey(Evento, on_delete=models.CASCADE, related_name="escalas")
 
-    instrumento_no_evento = models.ForeignKey(
-        "Instrumento", on_delete=models.SET_NULL, null=True, blank=True
+    instrumentos = models.ManyToManyField(
+        "Instrumento",
+        blank=True,
+        related_name="escalas",
+        verbose_name="Instrumentos no evento",
     )
 
     observacao = models.CharField(max_length=255, blank=True)
@@ -277,7 +280,10 @@ class Escala(models.Model):
         ordering = ["evento__data_evento"]
 
     def __str__(self):
-        return f"{self.musico.nome} em {self.evento.nome}"
+        nomes = ", ".join(i.nome for i in self.instrumentos.all())
+        return (
+            f"{self.musico.nome} em {self.evento.nome} ({nomes or 'sem instrumento'})"
+        )
 
 
 class Instrumento(models.Model):
