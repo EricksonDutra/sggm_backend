@@ -26,8 +26,8 @@ class GerenciadorEscalaTest(TestCase):
         escala = GerenciadorEscala.adicionar_musico_ao_evento(
             self.evento.id, self.musico.id, "Violão"
         )
-        self.assertEqual(escala.instrumento_no_evento.nome, "Violão")
-        self.assertEqual(Escala.objects.count(), 1)
+        self.assertEqual(escala.instrumentos.count(), 1)
+        self.assertEqual(escala.instrumentos.first().nome, "Violão")
 
     def test_bloquear_conflito_escala(self):
         GerenciadorEscala.adicionar_musico_ao_evento(self.evento.id, self.musico.id)

@@ -27,9 +27,10 @@ class CompartilhamentoService:
               ▶️ YouTube: <link>      (somente se houver)
         """
         try:
+            # ── ALTERADO: prefetch_related ───────────────────────
             evento = Evento.objects.prefetch_related(
                 "escalas__musico",
-                "escalas__instrumento_no_evento",
+                "escalas__instrumentos",  # ← era instrumento_no_evento
                 "repertorio__artista",
             ).get(id=evento_id)
         except Evento.DoesNotExist:
@@ -54,9 +55,13 @@ class CompartilhamentoService:
             linhas.append("")
             linhas.append("👥 *Equipe escalada:*")
             for escala in escalas:
+                # ── ALTERADO: M2M instrumentos ───────────────────
+                nomes_instrumentos = list(
+                    escala.instrumentos.values_list("nome", flat=True)
+                )
                 instrumento = (
-                    escala.instrumento_no_evento.nome
-                    if escala.instrumento_no_evento
+                    " • ".join(nomes_instrumentos)
+                    if nomes_instrumentos
                     else "Sem instrumento"
                 )
                 linhas.append(f"• {escala.musico.nome} — {instrumento}")

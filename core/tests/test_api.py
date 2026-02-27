@@ -16,14 +16,15 @@ class EscalaAPITest(APITestCase):
             password="testpass123",
         )
 
-        instrumento = Instrumento.objects.create(nome="Contra baixo")
+        # ── ALTERADO: self.instrumento ──────────────────────────
+        self.instrumento = Instrumento.objects.create(nome="Contra baixo")
 
         self.musico, created = Musico.objects.update_or_create(
             user=self.musico_user,
             defaults={
                 "nome": "Erickson",
                 "telefone": "99999999",
-                "instrumento_principal": instrumento,
+                "instrumento_principal": self.instrumento,  # ← usa self
                 "status": "ATIVO",
                 "tipo_usuario": "LIDER",
             },
@@ -45,7 +46,12 @@ class EscalaAPITest(APITestCase):
 
     def test_criar_escala_api_sucesso(self):
         url = reverse("escala-list")
-        data = {"musico": self.musico.id, "evento": self.evento.id}
+        # ── ALTERADO: adiciona instrumentos ─────────────────────
+        data = {
+            "musico": self.musico.id,
+            "evento": self.evento.id,
+            "instrumentos": [self.instrumento.id],
+        }
 
         response = self.client.post(url, data, format="json")
 
@@ -57,10 +63,17 @@ class EscalaAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_impedir_escala_duplicada_api(self):
-        Escala.objects.create(musico=self.musico, evento=self.evento)
+        # ── ALTERADO: cria escala com instrumentos ──────────────
+        escala = Escala.objects.create(musico=self.musico, evento=self.evento)
+        escala.instrumentos.set([self.instrumento])
 
         url = reverse("escala-list")
-        data = {"musico": self.musico.id, "evento": self.evento.id}
+        # ── ALTERADO: adiciona instrumentos no payload ──────────
+        data = {
+            "musico": self.musico.id,
+            "evento": self.evento.id,
+            "instrumentos": [self.instrumento.id],
+        }
 
         response = self.client.post(url, data, format="json")
 
@@ -75,7 +88,9 @@ class EscalaAPITest(APITestCase):
         self.musico.tipo_usuario = "MUSICO"
         self.musico.save()
 
+        # ── ALTERADO: adiciona instrumentos ─────────────────────
         escala = Escala.objects.create(musico=self.musico, evento=self.evento)
+        escala.instrumentos.set([self.instrumento])
 
         url = reverse("escala-confirmar", args=[escala.id])
 
@@ -99,7 +114,9 @@ class EscalaAPITest(APITestCase):
             instrumento_principal=outro_instrumento,
         )
 
+        # ── ALTERADO: adiciona instrumentos ─────────────────────
         escala = Escala.objects.create(musico=outro_musico, evento=self.evento)
+        escala.instrumentos.set([outro_instrumento])
 
         url = reverse("escala-confirmar", args=[escala.id])
         response = self.client.post(url, {"confirmado": True}, format="json")

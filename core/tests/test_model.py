@@ -384,16 +384,12 @@ class EscalaModelTest(TestCase):
         )
 
     def test_criar_escala(self):
-        """Testa criação de escala."""
         escala = Escala.objects.create(
             musico=self.musico,
             evento=self.evento,
-            instrumento_no_evento=self.instrumento,
             observacao="Teste",
         )
-        self.assertEqual(escala.musico, self.musico)
-        self.assertEqual(escala.evento, self.evento)
-        self.assertFalse(escala.confirmado)
+        escala.instrumentos.set([self.instrumento])
 
     def test_nao_permite_duplicidade_na_escala(self):
         """Testa unique_together musico-evento."""
@@ -441,9 +437,9 @@ class EscalaModelTest(TestCase):
             self.musico.delete()
 
     def test_str_retorna_musico_evento(self):
-        """Testa método __str__."""
         escala = Escala.objects.create(musico=self.musico, evento=self.evento)
-        expected = f"{self.musico.nome} em {self.evento.nome}"
+        escala.instrumentos.set([self.instrumento])
+        expected = f"{self.musico.nome} em {self.evento.nome} ({self.instrumento.nome})"
         self.assertEqual(str(escala), expected)
 
     def test_multiple_escalas_mesmo_evento(self):

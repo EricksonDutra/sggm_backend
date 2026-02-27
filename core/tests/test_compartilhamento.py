@@ -88,11 +88,12 @@ class CompartilhamentoServiceTest(TestCase):
         self.assertNotIn("Equipe escalada", texto)
 
     def test_musico_escalado_aparece_com_instrumento(self):
-        Escala.objects.create(
+        escala = Escala.objects.create(
             musico=self.musico,
             evento=self.evento,
-            instrumento_no_evento=self.instrumento,
         )
+        escala.instrumentos.set([self.instrumento])
+
         texto = CompartilhamentoService.gerar_texto_escala(self.evento.id)
         self.assertIn("João Silva", texto)
         self.assertIn("Violão", texto)
@@ -101,8 +102,8 @@ class CompartilhamentoServiceTest(TestCase):
         Escala.objects.create(
             musico=self.musico,
             evento=self.evento,
-            instrumento_no_evento=None,
         )
+        # M2M vazio = sem instrumento
         texto = CompartilhamentoService.gerar_texto_escala(self.evento.id)
         self.assertIn("João Silva", texto)
         self.assertIn("Sem instrumento", texto)
@@ -151,11 +152,11 @@ class CompartilhamentoServiceTest(TestCase):
         self.evento.data_hora_ensaio = DATA_ENSAIO
         self.evento.save()
 
-        Escala.objects.create(
+        escala = Escala.objects.create(
             musico=self.musico,
             evento=self.evento,
-            instrumento_no_evento=self.instrumento,
         )
+        escala.instrumentos.set([self.instrumento])
 
         self.evento.repertorio.add(self.musica_com_links)
         self.evento.repertorio.add(self.musica_sem_links)

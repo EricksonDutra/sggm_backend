@@ -305,9 +305,18 @@ class EscalaSerializer(serializers.ModelSerializer):
     evento_nome = serializers.CharField(source="evento.nome", read_only=True)
     evento_data = serializers.DateTimeField(source="evento.data_evento", read_only=True)
     evento_local = serializers.CharField(source="evento.local", read_only=True)
-    instrumento_nome = serializers.CharField(
-        source="instrumento_no_evento.nome", read_only=True, allow_null=True
+
+    # ── ALTERADO: FK → M2M ────────────────────────────────────────
+    instrumentos = serializers.PrimaryKeyRelatedField(
+        queryset=Instrumento.objects.all(),
+        many=True,
     )
+    instrumento_nome = serializers.SerializerMethodField()
+
+    def get_instrumento_nome(self, obj):
+        return " • ".join(i.nome for i in obj.instrumentos.all())
+
+    # ─────────────────────────────────────────────────────────────
 
     class Meta:
         model = Escala
@@ -320,26 +329,32 @@ class EscalaSerializer(serializers.ModelSerializer):
             "evento_nome",
             "evento_data",
             "evento_local",
-            "instrumento_no_evento",
-            "instrumento_nome",
+            "instrumentos",  # ← era instrumento_no_evento
+            "instrumento_nome",  # agora calculado: "Violão • Vocalista"
             "observacao",
             "confirmado",
             "criado_em",
         ]
         read_only_fields = ["id", "criado_em"]
 
+    def validate_instrumentos(self, value):
+        """Mínimo de 1 instrumento obrigatório"""
+        if not value:
+            raise serializers.ValidationError(
+                "É obrigatório informar pelo menos um instrumento."
+            )
+        return value
+
     def validate(self, data):
         """Validações customizadas ao criar/atualizar escala"""
         musico = data.get("musico")
         evento = data.get("evento")
 
-        # Verificar se músico está disponível
         if musico and not musico.esta_disponivel():
             raise serializers.ValidationError(
                 f"O músico {musico.nome} não está disponível (status: {musico.get_status_display()})."
             )
 
-        # Verificar duplicação (músico já escalado no mesmo evento)
         if musico and evento:
             instance_id = self.instance.id if self.instance else None
             if (
@@ -352,6 +367,20 @@ class EscalaSerializer(serializers.ModelSerializer):
                 )
 
         return data
+
+    # ── NOVO: M2M precisa de create/update explícito ──────────────
+    def create(self, validated_data):
+        instrumentos = validated_data.pop("instrumentos")
+        escala = Escala.objects.create(**validated_data)
+        escala.instrumentos.set(instrumentos)
+        return escala
+
+    def update(self, instance, validated_data):
+        instrumentos = validated_data.pop("instrumentos", None)
+        instance = super().update(instance, validated_data)
+        if instrumentos is not None:
+            instance.instrumentos.set(instrumentos)
+        return instance
 
 
 class EscalaCreateSerializer(serializers.ModelSerializer):
